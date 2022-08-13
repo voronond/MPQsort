@@ -1,4 +1,4 @@
-#include <doctest/doctest.h>
+#include <catch2/catch.hpp>
 #include <greeter/greeter.h>
 #include <greeter/version.h>
 
