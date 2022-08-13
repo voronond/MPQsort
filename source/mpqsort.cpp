@@ -1,5 +1,8 @@
 #include <fmt/format.h>
 #include <mpqsort.h>
+#include <omp.h>
+
+#include <iostream>
 
 using namespace mpqsort;
 
