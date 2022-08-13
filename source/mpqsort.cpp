@@ -1,7 +1,7 @@
 #include <fmt/format.h>
-#include <greeter/greeter.h>
+#include <mpqsort/mpqsort.h>
 
-using namespace greeter;
+using namespace mpqsort;
 
 Greeter::Greeter(std::string _name) : name(std::move(_name)) {}
 

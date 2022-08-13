@@ -2,7 +2,7 @@
 
 #include <string>
 
-namespace greeter {
+namespace mpqsort {
 
   /**  Language codes to be used with the Greeter class */
   enum class LanguageCode { EN, DE, ES, FR };
@@ -28,4 +28,4 @@ namespace greeter {
     std::string greet(LanguageCode lang = LanguageCode::EN) const;
   };
 
-}  // namespace greeter
+}  // namespace mpqsort

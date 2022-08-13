@@ -1,11 +1,11 @@
 #include <catch2/catch.hpp>
-#include <greeter/greeter.h>
-#include <greeter/version.h>
+#include <mpqsort/mpqsort.h>
+#include <mpqsort/version.h>
 
 #include <string>
 
 TEST_CASE("Greeter") {
-  using namespace greeter;
+  using namespace mpqsort;
 
   Greeter greeter("Tests");
 
@@ -16,6 +16,6 @@ TEST_CASE("Greeter") {
 }
 
 TEST_CASE("Greeter version") {
-  static_assert(std::string_view(GREETER_VERSION) == std::string_view("1.0"));
-  CHECK(std::string(GREETER_VERSION) == std::string("1.0"));
+  static_assert(std::string_view(MPQSORT_VERSION) == std::string_view("1.0"));
+  CHECK(std::string(MPQSORT_VERSION) == std::string("1.0"));
 }
