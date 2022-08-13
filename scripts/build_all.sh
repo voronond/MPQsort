@@ -5,7 +5,7 @@ set -e
 
 echo "Building all..."
 cmake -S all -B build
-cmake --build build
+cmake --build build -j`nproc`
 echo "Building done..."
 
 echo "Running tests..."
