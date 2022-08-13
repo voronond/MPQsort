@@ -1,4 +1,4 @@
-#include <mpqsort/mpqsort.h>
+#include <mpqsort.h>
 #include <mpqsort/version.h>
 
 #include <catch2/catch.hpp>
