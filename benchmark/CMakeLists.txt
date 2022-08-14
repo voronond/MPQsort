@@ -4,7 +4,7 @@ project(MPQsortBenchmarks LANGUAGES CXX)
 
 # ---- Options ----
 
-option(TEST_INSTALLED_VERSION "Test the version found by find_package" OFF)
+#option(TEST_INSTALLED_VERSION "Test the version found by find_package" OFF)
 
 # --- Import tools ----
 
@@ -22,11 +22,7 @@ CPMAddPackage(
 )
 CPMAddPackage("gh:TheLartians/Format.cmake@1.7.3")
 
-if(TEST_INSTALLED_VERSION)
-    find_package(MPQsort REQUIRED)
-else()
-    CPMAddPackage(NAME MPQsort SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/..)
-endif()
+CPMAddPackage(NAME MPQsort SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/..)
 
 # ---- Create binary ----
 

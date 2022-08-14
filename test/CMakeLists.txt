@@ -5,7 +5,6 @@ project(MPQsortTests LANGUAGES CXX)
 # ---- Options ----
 
 option(ENABLE_TEST_COVERAGE "Enable test coverage" OFF)
-option(TEST_INSTALLED_VERSION "Test the version found by find_package" OFF)
 
 # --- Import tools ----
 
@@ -17,12 +16,7 @@ include(../cmake/CPM.cmake)
 
 CPMAddPackage("gh:catchorg/Catch2@2.13.9")
 CPMAddPackage("gh:TheLartians/Format.cmake@1.7.3")
-
-if(TEST_INSTALLED_VERSION)
-    find_package(MPQsort REQUIRED)
-else()
-    CPMAddPackage(NAME MPQsort SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/..)
-endif()
+CPMAddPackage(NAME MPQsort SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/..)
 
 # ---- Create binary ----
 
@@ -32,12 +26,10 @@ target_link_libraries(${PROJECT_NAME} Catch2::Catch2 MPQsort::MPQsort)
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 17)
 
 # enable compiler warnings
-if(NOT TEST_INSTALLED_VERSION)
-    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-        target_compile_options(MPQsort PUBLIC -Wall -Wpedantic -Wextra -Werror)
-    elseif(MSVC)
-        target_compile_options(MPQsort PUBLIC /W4 /WX)
-    endif()
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    target_compile_options(MPQsort PUBLIC -Wall -Wpedantic -Wextra -Werror)
+elseif(MSVC)
+    target_compile_options(MPQsort PUBLIC /W4 /WX)
 endif()
 
 # ---- Add MPQsortTests ----
