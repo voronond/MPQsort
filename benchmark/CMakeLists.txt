@@ -4,7 +4,7 @@ project(MPQsortBenchmarks LANGUAGES CXX)
 
 # ---- Options ----
 
-#option(TEST_INSTALLED_VERSION "Test the version found by find_package" OFF)
+# option(TEST_INSTALLED_VERSION "Test the version found by find_package" OFF)
 
 # --- Import tools ----
 
