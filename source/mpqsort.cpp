@@ -1,9 +1,7 @@
-#include <fmt/format.h>
 #include <mpqsort.h>
 #include <omp.h>
 
 #include <exception>
-#include <iostream>
 #include <vector>
 
 // TODO remove after all methods implemented
