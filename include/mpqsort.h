@@ -3,7 +3,6 @@
 #include <execution>
 
 namespace mpqsort {
-
     /**
      * @brief Sorts data with their default comparator
      * Runs alway sequentially
@@ -83,3 +82,30 @@ namespace mpqsort {
     template <typename ExecutionPolicy, typename Cores, typename RandomIt, typename Compare>
     void sort(ExecutionPolicy&& policy, Cores cores, RandomIt first, RandomIt last, Compare comp);
 }  // namespace mpqsort
+
+namespace mpqsort::execution {
+    // Sequenced execution policy using two pivots
+    class sequenced_policy_two_way{};
+
+    // Sequenced execution policy using multiple pivots. The number of pivots will be determined by
+    // the algorithm
+    class sequenced_policy_multi_way{};
+
+    // Parallel execution policy using two pivots
+    class parallel_policy_two_way{};
+
+    // Parallel execution policy using multiple pivots. The number of pivots will be determined by
+    // the algorithm
+    class parallel_policy_multi_way{};
+
+    // TODO maybe add unseq if possible (standard and self defined)
+    // Add predefined policies from standard
+    using std::execution::seq;
+    using std::execution::par;
+
+    // Execution policy objects
+    inline constexpr sequenced_policy_two_way seq_two_way{};
+    inline constexpr sequenced_policy_multi_way seq_multi_way{};
+    inline constexpr parallel_policy_two_way par_two_way{};
+    inline constexpr parallel_policy_multi_way par_multi_way{};
+}  // namespace mpqsort::execution

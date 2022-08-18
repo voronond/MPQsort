@@ -9,9 +9,6 @@ TEST_CASE("Sort") {
     std::vector<int> v{1, 2, 3, 4};
     // std::vector b{};
 
-    int* p = nullptr;
-
-    *p = 3;
 
     // REQUIRE_THROWS(sort())
 }

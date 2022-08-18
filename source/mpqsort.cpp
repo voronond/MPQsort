@@ -20,6 +20,9 @@ void sort(ExecutionPolicy&& policy, RandomIt first, RandomIt last) {
     UNUSED(policy);
     UNUSED(first);
     UNUSED(last);
+    auto poly = mpqsort::execution::seq;
+    static_assert(std::is_execution_policy<decltype(poly)>::value);
+    UNUSED(poly);
     throw std::logic_error("Not implemented");
 }
 
