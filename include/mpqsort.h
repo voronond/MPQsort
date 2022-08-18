@@ -147,7 +147,7 @@ namespace mpqsort::execution {
      * @tparam T - a type to check
      */
     template <typename T> inline constexpr bool is_execution_policy_v
-        = is_execution_policy<T>::value;
+        = is_execution_policy<std::decay_t<T>>::value;
 
     // Allowed execution policies
     template <> struct is_execution_policy<sequenced_policy_two_way> : std::true_type {};

@@ -5,6 +5,37 @@
 #include <string>
 #include <vector>
 
+using namespace mpqsort;
+
+// Declaration of helpers and variables
+
+struct _TAG {
+    const std::string IS_EXECUTION_POLICY = "[is_execution_policy_v]";
+} TAG;
+
+// Declare allowed execution policies
+using ALLOWED_EXECUTION_POLICIES
+    = std::tuple<decltype(execution::par_two_way), decltype(execution::par_multi_way),
+                 decltype(execution::par), decltype(execution::seq_two_way),
+                 decltype(execution::seq_multi_way), decltype(execution::seq)>;
+
+// Some disallowed execution policies
+using DISALLOWED_EXECUTION_POLICIES
+    = std::tuple<int, bool, char, float, std::string, decltype(std::execution::par_unseq)>;
+
+// TEST CASES
+
+// Type trait should return true for all allowed policies
+TEMPLATE_LIST_TEST_CASE("Execution policy type trait allowed policies", TAG.IS_EXECUTION_POLICY, ALLOWED_EXECUTION_POLICIES) {
+    REQUIRE(std::is_swappable_v<int>);
+    CHECK(execution::is_execution_policy_v<TestType>);
+}
+
+// Type trait should return false for all disallowed policies
+TEMPLATE_LIST_TEST_CASE("Execution policy type trait disallowed policies", TAG.IS_EXECUTION_POLICY, DISALLOWED_EXECUTION_POLICIES) {
+    CHECK_FALSE(execution::is_execution_policy_v<TestType>);
+}
+
 TEST_CASE("Sort") {
     std::vector<int> v{1, 2, 3, 4};
     // std::vector b{};
