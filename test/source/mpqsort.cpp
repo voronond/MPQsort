@@ -9,7 +9,6 @@ TEST_CASE("Sort") {
     std::vector<int> v{1, 2, 3, 4};
     // std::vector b{};
 
-
     // REQUIRE_THROWS(sort())
 }
 

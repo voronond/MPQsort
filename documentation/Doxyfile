@@ -8,7 +8,7 @@ PROJECT_NUMBER = @DOXYGEN_PROJECT_VERSION@
 
 # Add sources
 INPUT = @DOXYGEN_PROJECT_ROOT@/README.md @DOXYGEN_PROJECT_ROOT@/include @DOXYGEN_PROJECT_ROOT@/documentation/pages
-EXTRACT_ALL = YES
+EXTRACT_ALL = NO
 RECURSIVE = YES
 OUTPUT_DIRECTORY = @DOXYGEN_OUTPUT_DIRECTORY@
 
@@ -28,4 +28,10 @@ CREATE_SUBDIRS = NO
 
 # Include all directories, files and namespaces in the documentation
 # Disable to include only explicitly documented objects
-M_SHOW_UNDOCUMENTED = YES
+# M_SHOW_UNDOCUMENTED = NO
+
+# Hide undocumented stuff
+# HIDE_UNDOC_MEMBERS     = YES
+# HIDE_UNDOC_CLASSES     = YES
+# HIDE_FRIEND_COMPOUNDS  = YES
+# HIDE_IN_BODY_DOCS      = YES
