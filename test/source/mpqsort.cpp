@@ -3,19 +3,20 @@
 
 #include <catch2/catch.hpp>
 #include <string>
+#include <vector>
 
-TEST_CASE("Greeter") {
-    using namespace mpqsort;
+TEST_CASE("Sort") {
+    std::vector<int> v{1, 2, 3, 4};
+    // std::vector b{};
 
-    Greeter greeter("Tests");
+    int* p = nullptr;
 
-    CHECK(greeter.greet(LanguageCode::EN) == "Hello, Tests!");
-    CHECK(greeter.greet(LanguageCode::DE) == "Hallo Tests!");
-    CHECK(greeter.greet(LanguageCode::ES) == "¡Hola Tests!");
-    CHECK(greeter.greet(LanguageCode::FR) == "Bonjour Tests!");
+    *p = 3;
+
+    // REQUIRE_THROWS(sort())
 }
 
-TEST_CASE("Greeter version") {
+TEST_CASE("Sort version") {
     static_assert(std::string_view(MPQSORT_VERSION) == std::string_view("1.0"));
     CHECK(std::string(MPQSORT_VERSION) == std::string("1.0"));
 }

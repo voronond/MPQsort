@@ -1,30 +1,85 @@
 #pragma once
 
-#include <string>
+#include <execution>
 
 namespace mpqsort {
 
-    /**  Language codes to be used with the Greeter class */
-    enum class LanguageCode { EN, DE, ES, FR };
+    /**
+     * @brief Sorts data with their default comparator
+     * Runs alway sequentially
+     * @tparam RandomIt
+     * @param first First element of a container
+     * @param last Last element of a container
+     */
+    template <typename RandomIt> void sort(RandomIt first, RandomIt last);
 
     /**
-     * @brief A class for saying hello in multiple languages
+     * @brief  Sorts data with their default comparator
+     * Can run in parallel or sequentially. If run in parallel, uses all available cores.
+     * @tparam ExecutionPolicy
+     * @tparam RandomIt
+     * @param policy Determines if sort runs in parallel or sequentially
+     * @param first First element of a container
+     * @param last Last element of a container
      */
-    class Greeter {
-        std::string name;
+    template <typename ExecutionPolicy, typename RandomIt>
+    void sort(ExecutionPolicy&& policy, RandomIt first, RandomIt last);
 
-      public:
-        /**
-         * @brief Creates a new greeter
-         * @param name the name to greet
-         */
-        Greeter(std::string name);
+    /**
+     * @brief  Sorts data with their default comparator
+     * Can run in parallel or sequentially. If run in parallel, uses all available cores.
+     * @tparam ExecutionPolicy
+     * @tparam Cores
+     * @tparam RandomIt
+     * @param policy Determines if sort runs in parallel or sequentially
+     * @param cores Number of used cores for parallel version. Sequential version ignores this
+     * argument.
+     * @param first First element of a container
+     * @param last Last element of a container
+     */
+    template <typename ExecutionPolicy, typename Cores, typename RandomIt>
+    void sort(ExecutionPolicy&& policy, Cores cores, RandomIt first, RandomIt last);
 
-        /**
-         * @brief Creates a localized string containing the greeting
-         * @param lang the language to greet in
-         * @return a string containing the greeting
-         */
-        std::string greet(LanguageCode lang = LanguageCode::EN) const;
-    };
+    /**
+     * @brief Sorts data using provided comparator
+     * Sorts data sequentially using provided comparator
+     * @tparam RandomIt
+     * @tparam Compare
+     * @param first First element of a container
+     * @param last Last element of a container
+     * @param comp Provided comparator to compare container elements
+     */
+    template <typename RandomIt, typename Compare>
+    void sort(RandomIt first, RandomIt last, Compare comp);
+
+    /**
+     * @brief Sorts data using provided comparator
+     * Can run in parallel or sequentially
+     * @tparam ExecutionPolicy
+     * @tparam RandomIt
+     * @tparam Compare
+     * @param policy Determines if sort runs in parallel or sequentially
+     * @param first First element of a container
+     * @param last Last element of a container
+     * @param comp Provided comparator to compare container elements
+     */
+    template <typename ExecutionPolicy, typename RandomIt, typename Compare>
+    void sort(ExecutionPolicy&& policy, RandomIt first, RandomIt last, Compare comp);
+
+    /**
+     * @brief Sorts data using provided comparator
+     * Can run in parallel or sequentially
+     * @tparam ExecutionPolicy
+     * @tparam Cores
+     * @tparam RandomIt
+     * @tparam Compare
+     * @param policy Determines if sort runs in parallel or sequentially
+     * @param cores Number of used cores for parallel version. Sequential version ignores this
+     * argument.
+     * @param first First element of a container
+     * @param last Last element of a container
+     * @param comp Provided comparator to compare container elements
+     */
+    template <typename ExecutionPolicy, typename Cores, typename RandomIt, typename Compare>
+    void sort(ExecutionPolicy&& policy, Cores cores, RandomIt first, RandomIt last, Compare comp);
 }  // namespace mpqsort

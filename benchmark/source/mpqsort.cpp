@@ -14,13 +14,7 @@ BENCHMARK(BM_StringCreation);
 static void BM_StringCopy(benchmark::State& state) {
     using namespace mpqsort;
 
-    Greeter greeter("Tests");
-
     for (auto _ : state) {
-        greeter.greet(LanguageCode::EN);
-        greeter.greet(LanguageCode::DE);
-        greeter.greet(LanguageCode::ES);
-        greeter.greet(LanguageCode::FR);
     }
 }
 BENCHMARK(BM_StringCopy);

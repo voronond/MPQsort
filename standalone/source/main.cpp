@@ -7,13 +7,6 @@
 #include <unordered_map>
 
 auto main(int argc, char** argv) -> int {
-    const std::unordered_map<std::string, mpqsort::LanguageCode> languages{
-        {"en", mpqsort::LanguageCode::EN},
-        {"de", mpqsort::LanguageCode::DE},
-        {"es", mpqsort::LanguageCode::ES},
-        {"fr", mpqsort::LanguageCode::FR},
-    };
-
     cxxopts::Options options(*argv, "A program to welcome the world!");
 
     std::string language;
@@ -39,15 +32,6 @@ auto main(int argc, char** argv) -> int {
         std::cout << "Greeter, version " << MPQSORT_VERSION << std::endl;
         return 0;
     }
-
-    auto langIt = languages.find(language);
-    if (langIt == languages.end()) {
-        std::cerr << "unknown language code: " << language << std::endl;
-        return 1;
-    }
-
-    mpqsort::Greeter greeter(name);
-    std::cout << greeter.greet(langIt->second) << std::endl;
 
     return 0;
 }
