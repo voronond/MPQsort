@@ -1,6 +1,7 @@
 #pragma once
 
 #include <execution>
+#include <type_traits>
 
 namespace mpqsort {
     /**
@@ -108,4 +109,32 @@ namespace mpqsort::execution {
     inline constexpr sequenced_policy_multi_way seq_multi_way{};
     inline constexpr parallel_policy_two_way par_two_way{};
     inline constexpr parallel_policy_multi_way par_multi_way{};
+
+    // Define own type trait to determine if we got policy type
+    template<typename T>
+    struct is_execution_policy: std::false_type{};
+
+    // Define helper variable template
+    template<typename T>
+    inline constexpr bool is_execution_policy_v = is_execution_policy<T>::value;
+
+    // Our execution policies
+    template<>
+    struct is_execution_policy<sequenced_policy_two_way>: std::true_type{};
+
+    template<>
+    struct is_execution_policy<sequenced_policy_multi_way>: std::true_type{};
+
+    template<>
+    struct is_execution_policy<parallel_policy_two_way>: std::true_type{};
+
+    template<>
+    struct is_execution_policy<parallel_policy_multi_way>: std::true_type{};
+
+    // STD execution policies
+    template<>
+    struct is_execution_policy<std::execution::sequenced_policy>: std::true_type{};
+
+    template<>
+    struct is_execution_policy<std::execution::parallel_policy>: std::true_type{};
 }  // namespace mpqsort::execution
