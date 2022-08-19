@@ -7,6 +7,8 @@
 #include <unordered_map>
 #include <typeindex>
 #include <any>
+#include <iostream>
+#include <algorithm>
 
 using namespace mpqsort;
 
@@ -57,7 +59,7 @@ TEMPLATE_LIST_TEST_CASE("Execution policy type trait disallowed policies", TAG.I
 
 // Test if all sort prototypes can be called and instantiated (without policies)
 TEST_CASE("Instantiation of a sort overloads without policy", TAG.SORT_ALL) {
-    std::vector<int> test_vector{};
+    std::vector<int> test_vector{0, 0};
     auto first = test_vector.begin();
     auto last = test_vector.end();
 
@@ -67,8 +69,7 @@ TEST_CASE("Instantiation of a sort overloads without policy", TAG.SORT_ALL) {
 
 // Test if all sort prototypes can be called and instantiated (with policies)
 TEMPLATE_LIST_TEST_CASE("Instantiation of a short overloads with policy", TAG.SORT_ALL, ALLOWED_EXECUTION_POLICIES) {
-    // Vector to sort, empty as we only instantiate
-    std::vector<int> test_vector{};
+    std::vector<int> test_vector{0, 0};
     auto first = test_vector.begin();
     auto last = test_vector.end();
 
@@ -79,6 +80,59 @@ TEMPLATE_LIST_TEST_CASE("Instantiation of a short overloads with policy", TAG.SO
     mpqsort::sort(policy, cores, first, last);
     mpqsort::sort(policy, first, last, std::greater<int>());
     mpqsort::sort(policy, cores, first, last, std::greater<int>());
+}
+
+// Test correctness of implementations
+TEMPLATE_LIST_TEST_CASE("Sort already sorted vector", TAG.SORT_ALL, ALLOWED_EXECUTION_POLICIES) {
+    // Length 1..10
+    auto vector_length = GENERATE(range(1, 11));
+    // Generate sequence from 0 to 10
+    auto test_vector = GENERATE(chunk(10, range(0, 10)));
+    test_vector.resize(vector_length);
+    // Set expected result
+    auto test_vector_res = test_vector;
+
+    CAPTURE(vector_length);
+
+    mpqsort::sort(TestType{}, test_vector.begin(), test_vector.end());
+
+    REQUIRE_THAT(test_vector, Catch::Equals(test_vector_res));
+}
+
+TEMPLATE_LIST_TEST_CASE("Sort vector provided in reversed order", TAG.SORT_ALL, ALLOWED_EXECUTION_POLICIES) {
+    // Length 1..10
+    auto vector_length = GENERATE(range(1, 11));
+    // Generate sequence from 0 to 10
+    auto test_vector = GENERATE(chunk(10, range(0, 10)));
+    test_vector.resize(vector_length);
+    // Set expected result
+    auto test_vector_res = test_vector;
+    // Reverse input vector
+    std::reverse(test_vector.begin(), test_vector.end());
+
+    CAPTURE(vector_length);
+
+    mpqsort::sort(TestType{}, test_vector.begin(), test_vector.end());
+
+    REQUIRE_THAT(test_vector, Catch::Equals(test_vector_res));
+}
+
+// Random data, random lengths. Final test trying to catch missed bugs
+TEMPLATE_LIST_TEST_CASE("Sort vectors, different sizes and random numbers. Last chance to catch errors.", TAG.SORT_ALL, ALLOWED_EXECUTION_POLICIES) {
+    // Random length from 100 to 10000
+    auto vector_length = GENERATE(take(10, random(100, 10000)));
+    // Generate vector with random numbers
+    auto test_vector = GENERATE(chunk(10000, take(10000, random(0, 1000000))));
+    test_vector.resize(vector_length);
+    // Compute expected result
+    auto test_vector_res = test_vector;
+    std::sort(test_vector_res.begin(), test_vector_res.end());
+
+    CAPTURE(vector_length);
+
+    mpqsort::sort(TestType{}, test_vector.begin(), test_vector.end());
+
+    REQUIRE_THAT(test_vector, Catch::Equals(test_vector_res));
 }
 
 TEST_CASE("Sort version") {

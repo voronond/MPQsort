@@ -108,6 +108,14 @@ namespace mpqsort::helpers {
         std::sort(first, last, comp);
     }
 
+    template <typename NumPivot, typename RandomIt,
+              typename Compare = std::less<typename std::iterator_traits<RandomIt>::value_type>>
+    void par_multiway_qsort(NumPivot pivot_num, RandomIt first, RandomIt last,
+                            Compare comp = Compare()) {
+        // Use all available cores on a machine
+        par_multiway_qsort(pivot_num, omp_get_num_procs(), first, last, comp);
+    }
+
     // Call sort based on policy type
     template <typename ExecutionPolicy, typename... T> constexpr void _call_sort(ExecutionPolicy&& policy, T... args) {
         static_assert(
@@ -117,22 +125,22 @@ namespace mpqsort::helpers {
 
         if constexpr (std::is_same_v<ExecutionPolicy, decltype(execution::seq)>) {
             // Call with one pivot
-            seq_multiway_qsort(1, std::forward<T...>(args...));
+            seq_multiway_qsort(1, std::forward<T>(args)...);
         } else if constexpr (std::is_same_v<ExecutionPolicy, decltype(execution::seq_two_way)>) {
             // Call with two pivots
-            seq_multiway_qsort(2, std::forward<T...>(args...));
+            seq_multiway_qsort(2, std::forward<T>(args)...);
         } else if constexpr (std::is_same_v<ExecutionPolicy, decltype(execution::seq_multi_way)>) {
             // Let algorithm decide how many pivots to use
-            seq_multiway_qsort(std::numeric_limits<int>::max, std::forward<T...>(args...));
+            seq_multiway_qsort(std::numeric_limits<int>::max, std::forward<T>(args)...);
         } else if constexpr (std::is_same_v<ExecutionPolicy, decltype(execution::par)>) {
             // Call with one pivot
-            par_multi_way_qsort(1, std::forward<T...>(args...));
+            par_multiway_qsort(1, std::forward<T>(args)...);
         } else if constexpr (std::is_same_v<ExecutionPolicy, decltype(execution::par_two_way)>) {
             // Call with two pivots
-            par_multi_way_qsort(2, std::forward<T...>(args...));
+            par_multiway_qsort(2, std::forward<T>(args)...);
         } else if constexpr (std::is_same_v<ExecutionPolicy, decltype(execution::par_multi_way)>) {
             // Let algorithm decide how many pivots to use
-            par_multi_way_qsort(std::numeric_limits<int>::max, std::forward<T...>(args...));
+            par_multiway_qsort(std::numeric_limits<int>::max, std::forward<T>(args)...);
         }
     }
 }  // namespace mpqsort::helpers
