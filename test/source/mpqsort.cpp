@@ -124,6 +124,61 @@ TEMPLATE_LIST_TEST_CASE("Sort vector provided in reversed order", TAG.SORT_ALL,
     REQUIRE_THAT(test_vector, Catch::Equals(test_vector_res));
 }
 
+TEMPLATE_LIST_TEST_CASE("Sort custom type with defined comparator", TAG.SORT_ALL,
+                        ALLOWED_EXECUTION_POLICIES) {
+    // Declare custom type and comparators
+    struct _TEST_STRUCT {
+        _TEST_STRUCT(std::string&& _str, int _num) : str(_str), num(_num) {}
+        std::string str;
+        int num;
+
+        bool operator==(const _TEST_STRUCT& o) const { return str == o.str && num == o.num; }
+
+        bool operator!=(const _TEST_STRUCT& o) const { return !(*this == o); }
+    };
+
+    auto lambda_comparator = [](const auto& a, const auto& b) {
+        if (a.str < b.str)
+            return true;
+        else if (a.str == b.str && a.num < b.num)
+            return true;
+        else {
+            return false;
+        }
+    };
+
+    struct functor_comparator {
+        bool operator()(const _TEST_STRUCT& a, const _TEST_STRUCT& b) {
+            if (a.str < b.str)
+                return true;
+            else if (a.str == b.str && a.num < b.num)
+                return true;
+            else {
+                return false;
+            }
+        }
+    };
+
+    std::vector<_TEST_STRUCT> test_vector{_TEST_STRUCT("z", 2), _TEST_STRUCT("a", 2),
+                                          _TEST_STRUCT("g", 6), _TEST_STRUCT("z", 2),
+                                          _TEST_STRUCT("z", 1)};
+
+    auto test_vector_res = test_vector;
+
+    SECTION("Use lambda comparator") {
+        std::sort(test_vector_res.begin(), test_vector_res.end(), lambda_comparator);
+        mpqsort::sort(test_vector.begin(), test_vector.end(), lambda_comparator);
+
+        REQUIRE_THAT(test_vector, Catch::Equals(test_vector_res));
+    }
+
+    SECTION("Use functor comparator") {
+        std::sort(test_vector_res.begin(), test_vector_res.end(), functor_comparator());
+        mpqsort::sort(test_vector.begin(), test_vector.end(), functor_comparator());
+
+        REQUIRE_THAT(test_vector, Catch::Equals(test_vector_res));
+    }
+}
 // Random data, random lengths. Final test trying to catch missed bugs
 TEMPLATE_LIST_TEST_CASE(
     "Sort vectors, different sizes and random numbers. Last chance to catch errors.", TAG.SORT_ALL,
