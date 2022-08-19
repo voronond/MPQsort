@@ -1,5 +1,5 @@
 #include <benchmark/benchmark.h>
-#include <mpqsort.h>
+#include <mpqsort/mpqsort.h>
 #include <mpqsort/version.h>
 
 #include <string>

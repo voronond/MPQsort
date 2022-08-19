@@ -1,4 +1,4 @@
-#include <mpqsort.h>
+#include <mpqsort/mpqsort.h>
 #include <mpqsort/version.h>
 
 #include <cxxopts.hpp>
@@ -32,6 +32,9 @@ auto main(int argc, char** argv) -> int {
         std::cout << "Greeter, version " << MPQSORT_VERSION << std::endl;
         return 0;
     }
+
+    int arr[] = {1, 2, 3};
+    mpqsort::sort(arr, arr + 3);
 
     return 0;
 }

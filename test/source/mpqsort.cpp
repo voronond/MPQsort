@@ -1,4 +1,4 @@
-#include <mpqsort.h>
+#include <mpqsort/mpqsort.h>
 #include <mpqsort/version.h>
 
 #include <catch2/catch.hpp>
@@ -14,18 +14,18 @@ struct _TAG {
     const std::string SEQ = "[seq_sort]";
     const std::string SEQ_TWO_WAY = "[seq_two_way_sort]";
     const std::string SEQ_MULTIWAY = "[seq_multiway_sort]";
-    const std::string SEQ_ALL = "[@seq_all]";
+    const std::string SEQ_ALL = SEQ + SEQ_TWO_WAY + SEQ_MULTIWAY;
     const std::string PAR = "[par_sort]";
     const std::string PAR_TWO_WAY = "[par_two_way_sort]";
     const std::string PAR_MULTIWAY = "[par_multiway_sort]";
-    const std::string PAR_ALL = "[@par_all]";
+    const std::string PAR_ALL = PAR + PAR_TWO_WAY + PAR_MULTIWAY;
+    const std::string SORT_ALL = SEQ_ALL + PAR_ALL;
 } TAG;
 
 // Combine tags and create alias for catch2 (supports only C strings)
-CATCH_REGISTER_TAG_ALIAS(TAG.SEQ_ALL.c_str(),
-                         (TAG.SEQ + TAG.SEQ_TWO_WAY + TAG.SEQ_MULTIWAY).c_str());
-CATCH_REGISTER_TAG_ALIAS(TAG.PAR_ALL.c_str(),
-                         (TAG.PAR + TAG.PAR_TWO_WAY + TAG.PAR_MULTIWAY).c_str());
+CATCH_REGISTER_TAG_ALIAS("[@seq_all]", TAG.SEQ_ALL.c_str());
+CATCH_REGISTER_TAG_ALIAS("[@par_all]", TAG.PAR_ALL.c_str());
+CATCH_REGISTER_TAG_ALIAS("[@sort_all]", TAG.SORT_ALL.c_str());
 
 // Declare allowed execution policies
 using ALLOWED_EXECUTION_POLICIES
@@ -50,6 +50,13 @@ TEMPLATE_LIST_TEST_CASE("Execution policy type trait allowed policies", TAG.IS_E
 TEMPLATE_LIST_TEST_CASE("Execution policy type trait disallowed policies", TAG.IS_EXECUTION_POLICY,
                         DISALLOWED_EXECUTION_POLICIES) {
     CHECK_FALSE(execution::is_execution_policy_v<TestType>);
+}
+
+// Test if all sort prototypes can be called and instantiated (without policies)
+TEST_CASE("Instantiation of a sort overloads without policy") {
+    std::vector<int> test_vector{1, 2, 3};
+
+    mpqsort::sort(test_vector.begin(), test_vector.end());
 }
 
 TEST_CASE("Sort") {
