@@ -189,6 +189,7 @@ namespace mpqsort {
      */
     template <typename ExecutionPolicy, typename Cores, typename RandomIt>
     void sort(ExecutionPolicy&& policy, Cores cores, RandomIt first, RandomIt last) {
+        static_assert(std::is_integral_v<Cores>, "Integral required for cores");
         helpers::_call_sort(std::forward<ExecutionPolicy>(policy), cores, first, last);
     }
 
@@ -238,6 +239,7 @@ namespace mpqsort {
      */
     template <typename ExecutionPolicy, typename Cores, typename RandomIt, typename Compare>
     void sort(ExecutionPolicy&& policy, Cores cores, RandomIt first, RandomIt last, Compare comp) {
+        static_assert(std::is_integral_v<Cores>, "Integral required for cores");
         helpers::_call_sort(std::forward<ExecutionPolicy>(policy), cores, first, last, comp);
     }
 }  // namespace mpqsort
