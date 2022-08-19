@@ -55,8 +55,10 @@ TEMPLATE_LIST_TEST_CASE("Execution policy type trait disallowed policies", TAG.I
 // Test if all sort prototypes can be called and instantiated (without policies)
 TEST_CASE("Instantiation of a sort overloads without policy") {
     std::vector<int> test_vector{1, 2, 3};
+    auto first = test_vector.begin();
+    auto last = test_vector.end();
 
-    mpqsort::sort(test_vector.begin(), test_vector.end());
+    mpqsort::sort(first, last);
 }
 
 TEST_CASE("Sort") {

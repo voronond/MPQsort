@@ -3,9 +3,9 @@
 #include <omp.h>
 
 #include <execution>
+#include <iterator>
 #include <limits>
 #include <type_traits>
-#include <iterator>
 
 // TODO remove after all methods implemented
 #define UNUSED(x) (void)(x)
@@ -89,8 +89,10 @@ namespace mpqsort::execution {
 
 namespace mpqsort::helpers {
     // Helper functions
-    template <typename NumPivot, typename RandomIt, typename Compare = std::less<typename std::iterator_traits<RandomIt>::value_type>>
-    void seq_multiway_qsort(NumPivot pivot_num, RandomIt first, RandomIt last, Compare comp = Compare()) {
+    template <typename NumPivot, typename RandomIt,
+              typename Compare = std::less<typename std::iterator_traits<RandomIt>::value_type>>
+    void seq_multiway_qsort(NumPivot pivot_num, RandomIt first, RandomIt last,
+                            Compare comp = Compare()) {
         // TODO implement
         UNUSED(pivot_num);
         std::sort(first, last, comp);
@@ -105,17 +107,13 @@ namespace mpqsort::helpers {
         UNUSED(cores);
         std::sort(first, last, comp);
     }
-    // Test if received policy is known
-    template <typename T> inline constexpr void _is_execution_policy_assert() {
-        static_assert(
-            execution::is_execution_policy_v<T>,
-            "Provided ExecutionPolicy is not valid. Use predefined policies from namespace "
-            "mpqsort::execution.");
-    }
 
     // Call sort based on policy type
     template <typename ExecutionPolicy, typename... T> constexpr void _call_sort(T... args) {
-        _is_execution_policy_assert<ExecutionPolicy>();
+        static_assert(
+            execution::is_execution_policy_v<ExecutionPolicy>,
+            "Provided ExecutionPolicy is not valid. Use predefined policies from namespace "
+            "mpqsort::execution.");
 
         if constexpr (std::is_same_v<ExecutionPolicy, decltype(execution::seq)>) {
             // Call with one pivot
