@@ -4,6 +4,9 @@
 #include <catch2/catch.hpp>
 #include <string>
 #include <vector>
+#include <unordered_map>
+#include <typeindex>
+#include <any>
 
 using namespace mpqsort;
 
@@ -53,19 +56,29 @@ TEMPLATE_LIST_TEST_CASE("Execution policy type trait disallowed policies", TAG.I
 }
 
 // Test if all sort prototypes can be called and instantiated (without policies)
-TEST_CASE("Instantiation of a sort overloads without policy") {
-    std::vector<int> test_vector{1, 2, 3};
+TEST_CASE("Instantiation of a sort overloads without policy", TAG.SORT_ALL) {
+    std::vector<int> test_vector{};
     auto first = test_vector.begin();
     auto last = test_vector.end();
 
     mpqsort::sort(first, last);
+    mpqsort::sort(first, last, std::greater<int>());
 }
 
-TEST_CASE("Sort") {
-    std::vector<int> v{1, 2, 3, 4};
-    // std::vector b{};
+// Test if all sort prototypes can be called and instantiated (with policies)
+TEMPLATE_LIST_TEST_CASE("Instantiation of a short overloads with policy", TAG.SORT_ALL, ALLOWED_EXECUTION_POLICIES) {
+    // Vector to sort, empty as we only instantiate
+    std::vector<int> test_vector{};
+    auto first = test_vector.begin();
+    auto last = test_vector.end();
 
-    // REQUIRE_THROWS(sort())
+    auto policy = TestType{};
+    int cores = 4;
+
+    mpqsort::sort(policy, first, last);
+    mpqsort::sort(policy, cores, first, last);
+    mpqsort::sort(policy, first, last, std::greater<int>());
+    mpqsort::sort(policy, cores, first, last, std::greater<int>());
 }
 
 TEST_CASE("Sort version") {

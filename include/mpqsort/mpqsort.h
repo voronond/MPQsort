@@ -109,9 +109,9 @@ namespace mpqsort::helpers {
     }
 
     // Call sort based on policy type
-    template <typename ExecutionPolicy, typename... T> constexpr void _call_sort(T... args) {
+    template <typename ExecutionPolicy, typename... T> constexpr void _call_sort(ExecutionPolicy&& policy, T... args) {
         static_assert(
-            execution::is_execution_policy_v<ExecutionPolicy>,
+            execution::is_execution_policy_v<decltype(policy)>,
             "Provided ExecutionPolicy is not valid. Use predefined policies from namespace "
             "mpqsort::execution.");
 
@@ -163,7 +163,7 @@ namespace mpqsort {
      */
     template <typename ExecutionPolicy, typename RandomIt>
     void sort(ExecutionPolicy&& policy, RandomIt first, RandomIt last) {
-        _call_sort(std::forward(policy), first, last);
+        helpers::_call_sort(std::forward<ExecutionPolicy>(policy), first, last);
     }
 
     /**
@@ -180,7 +180,7 @@ namespace mpqsort {
      */
     template <typename ExecutionPolicy, typename Cores, typename RandomIt>
     void sort(ExecutionPolicy&& policy, Cores cores, RandomIt first, RandomIt last) {
-        _call_sort(std::forward(policy), cores, first, last);
+        helpers::_call_sort(std::forward<ExecutionPolicy>(policy), cores, first, last);
     }
 
     /**
@@ -194,7 +194,7 @@ namespace mpqsort {
      */
     template <typename RandomIt, typename Compare>
     void sort(RandomIt first, RandomIt last, Compare comp) {
-        seq_multiway_qsort(1, first, last, comp);
+        helpers::seq_multiway_qsort(1, first, last, comp);
     }
 
     /**
@@ -210,7 +210,7 @@ namespace mpqsort {
      */
     template <typename ExecutionPolicy, typename RandomIt, typename Compare>
     void sort(ExecutionPolicy&& policy, RandomIt first, RandomIt last, Compare comp) {
-        _call_sort(std::forward(policy), first, last, comp);
+        helpers::_call_sort(std::forward<ExecutionPolicy>(policy), first, last, comp);
     }
 
     /**
@@ -229,6 +229,6 @@ namespace mpqsort {
      */
     template <typename ExecutionPolicy, typename Cores, typename RandomIt, typename Compare>
     void sort(ExecutionPolicy&& policy, Cores cores, RandomIt first, RandomIt last, Compare comp) {
-        _call_sort(std::forward(policy), cores, first, last, comp);
+        helpers::_call_sort(std::forward<ExecutionPolicy>(policy), cores, first, last, comp);
     }
 }  // namespace mpqsort
