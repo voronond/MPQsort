@@ -1,14 +1,14 @@
 #include <mpqsort/mpqsort.h>
 #include <mpqsort/version.h>
 
-#include <catch2/catch.hpp>
-#include <string>
-#include <vector>
-#include <unordered_map>
-#include <typeindex>
-#include <any>
-#include <iostream>
 #include <algorithm>
+#include <any>
+#include <catch2/catch.hpp>
+#include <iostream>
+#include <string>
+#include <typeindex>
+#include <unordered_map>
+#include <vector>
 
 using namespace mpqsort;
 
@@ -44,6 +44,11 @@ using DISALLOWED_EXECUTION_POLICIES
 
 // TEST CASES
 
+TEST_CASE("Sort version") {
+    static_assert(std::string_view(MPQSORT_VERSION) == std::string_view("1.0"));
+    CHECK(std::string(MPQSORT_VERSION) == std::string("1.0"));
+}
+
 // Type trait should return true for all allowed policies
 TEMPLATE_LIST_TEST_CASE("Execution policy type trait allowed policies", TAG.IS_EXECUTION_POLICY,
                         ALLOWED_EXECUTION_POLICIES) {
@@ -68,7 +73,8 @@ TEST_CASE("Instantiation of a sort overloads without policy", TAG.SORT_ALL) {
 }
 
 // Test if all sort prototypes can be called and instantiated (with policies)
-TEMPLATE_LIST_TEST_CASE("Instantiation of a short overloads with policy", TAG.SORT_ALL, ALLOWED_EXECUTION_POLICIES) {
+TEMPLATE_LIST_TEST_CASE("Instantiation of a short overloads with policy", TAG.SORT_ALL,
+                        ALLOWED_EXECUTION_POLICIES) {
     std::vector<int> test_vector{0, 0};
     auto first = test_vector.begin();
     auto last = test_vector.end();
@@ -99,7 +105,8 @@ TEMPLATE_LIST_TEST_CASE("Sort already sorted vector", TAG.SORT_ALL, ALLOWED_EXEC
     REQUIRE_THAT(test_vector, Catch::Equals(test_vector_res));
 }
 
-TEMPLATE_LIST_TEST_CASE("Sort vector provided in reversed order", TAG.SORT_ALL, ALLOWED_EXECUTION_POLICIES) {
+TEMPLATE_LIST_TEST_CASE("Sort vector provided in reversed order", TAG.SORT_ALL,
+                        ALLOWED_EXECUTION_POLICIES) {
     // Length 1..10
     auto vector_length = GENERATE(range(1, 11));
     // Generate sequence from 0 to 10
@@ -118,7 +125,9 @@ TEMPLATE_LIST_TEST_CASE("Sort vector provided in reversed order", TAG.SORT_ALL, 
 }
 
 // Random data, random lengths. Final test trying to catch missed bugs
-TEMPLATE_LIST_TEST_CASE("Sort vectors, different sizes and random numbers. Last chance to catch errors.", TAG.SORT_ALL, ALLOWED_EXECUTION_POLICIES) {
+TEMPLATE_LIST_TEST_CASE(
+    "Sort vectors, different sizes and random numbers. Last chance to catch errors.", TAG.SORT_ALL,
+    ALLOWED_EXECUTION_POLICIES) {
     // Random length from 100 to 10000
     auto vector_length = GENERATE(take(10, random(100, 10000)));
     // Generate vector with random numbers
@@ -133,9 +142,4 @@ TEMPLATE_LIST_TEST_CASE("Sort vectors, different sizes and random numbers. Last 
     mpqsort::sort(TestType{}, test_vector.begin(), test_vector.end());
 
     REQUIRE_THAT(test_vector, Catch::Equals(test_vector_res));
-}
-
-TEST_CASE("Sort version") {
-    static_assert(std::string_view(MPQSORT_VERSION) == std::string_view("1.0"));
-    CHECK(std::string(MPQSORT_VERSION) == std::string("1.0"));
 }

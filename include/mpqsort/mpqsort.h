@@ -117,7 +117,8 @@ namespace mpqsort::helpers {
     }
 
     // Call sort based on policy type
-    template <typename ExecutionPolicy, typename... T> constexpr void _call_sort(ExecutionPolicy&& policy, T... args) {
+    template <typename ExecutionPolicy, typename... T>
+    constexpr void _call_sort(ExecutionPolicy&& policy, T... args) {
         static_assert(
             execution::is_execution_policy_v<decltype(policy)>,
             "Provided ExecutionPolicy is not valid. Use predefined policies from namespace "

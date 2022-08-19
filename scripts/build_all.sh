@@ -3,6 +3,8 @@
 # Exit when any command fails
 set -e
 
+export CPM_SOURCE_CACHE=$HOME/.cache/CPM
+
 echo "Building all..."
 cmake -S all -B build
 cmake --build build -j`nproc`
