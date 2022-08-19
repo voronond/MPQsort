@@ -192,7 +192,7 @@ TEMPLATE_LIST_TEST_CASE(
     auto test_vector_res = test_vector;
     std::sort(test_vector_res.begin(), test_vector_res.end());
 
-    CAPTURE(vector_length);
+    CAPTURE(vector_length, Catch::rngSeed());
 
     mpqsort::sort(TestType{}, test_vector.begin(), test_vector.end());
 
