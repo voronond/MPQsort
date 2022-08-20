@@ -69,20 +69,23 @@ namespace mpqsort::execution {
      * @brief Checks whether T is a parallel execution policy type defined in MPQsort library.
      * @tparam T - a type to check
      */
-    template <typename T> struct is_parallel_execution_policy: std::false_type {};
+    template <typename T> struct is_parallel_execution_policy : std::false_type {};
 
     /**
-     * @brief Helper variable template to check the execution policy. Automatically applies decay type trait.
+     * @brief Helper variable template to check the execution policy. Automatically applies decay
+     * type trait.
      * @tparam T - a type to check
      */
     template <typename T> inline constexpr bool is_execution_policy_v
         = is_execution_policy<std::decay_t<T>>::value;
 
     /**
-     * @brief Helper variable template to check the execution policy. Automatically applies decay type trait.
+     * @brief Helper variable template to check the execution policy. Automatically applies decay
+     * type trait.
      * @tparam T - a type to check
      */
-    template <typename T> inline constexpr bool is_parallel_execution_policy_v = is_parallel_execution_policy<std::decay_t<T>>::value;
+    template <typename T> inline constexpr bool is_parallel_execution_policy_v
+        = is_parallel_execution_policy<std::decay_t<T>>::value;
 
     // Allowed execution policies
     template <> struct is_execution_policy<sequenced_policy_two_way> : std::true_type {};
@@ -90,24 +93,27 @@ namespace mpqsort::execution {
     template <> struct is_execution_policy<parallel_policy_two_way> : std::true_type {};
     template <> struct is_execution_policy<parallel_policy_multi_way> : std::true_type {};
 
-    template<> struct is_parallel_execution_policy<parallel_policy_two_way> : std::true_type {};
-    template<> struct is_parallel_execution_policy<parallel_policy_multi_way> : std::true_type {};
+    template <> struct is_parallel_execution_policy<parallel_policy_two_way> : std::true_type {};
+    template <> struct is_parallel_execution_policy<parallel_policy_multi_way> : std::true_type {};
 
     // Allowed STD execution policies
     template <> struct is_execution_policy<std::execution::sequenced_policy> : std::true_type {};
     template <> struct is_execution_policy<std::execution::parallel_policy> : std::true_type {};
 
-    template<> struct is_parallel_execution_policy<std::execution::parallel_policy> : std::true_type {};
+    template <> struct is_parallel_execution_policy<std::execution::parallel_policy>
+        : std::true_type {};
 }  // namespace mpqsort::execution
 
 namespace mpqsort::helpers {
-    template <typename T, typename U> inline constexpr bool is_same_decay_v = std::is_same<std::decay_t<T>, std::decay_t<U>>::value;
+    // Extension of is_same applying decay_t automatically
+    template <typename T, typename U> inline constexpr bool _is_same_decay_v
+        = std::is_same<std::decay_t<T>, std::decay_t<U>>::value;
 
     // Helper functions
     template <typename NumPivot, typename RandomIt,
               typename Compare = std::less<typename std::iterator_traits<RandomIt>::value_type>>
-    void seq_multiway_qsort(NumPivot pivot_num, RandomIt first, RandomIt last,
-                            Compare comp = Compare()) {
+    void _seq_multiway_qsort(NumPivot pivot_num, RandomIt first, RandomIt last,
+                             Compare comp = Compare()) {
         // TODO implement
         UNUSED(pivot_num);
         std::sort(first, last, comp);
@@ -115,8 +121,8 @@ namespace mpqsort::helpers {
 
     template <typename NumPivot, typename Cores, typename RandomIt,
               typename Compare = std::less<typename std::iterator_traits<RandomIt>::value_type>>
-    void par_multiway_qsort(NumPivot pivot_num, Cores cores, RandomIt first, RandomIt last,
-                            Compare comp = Compare()) {
+    void _par_multiway_qsort(NumPivot pivot_num, Cores cores, RandomIt first, RandomIt last,
+                             Compare comp = Compare()) {
         // TODO implement
         UNUSED(pivot_num);
         UNUSED(cores);
@@ -125,10 +131,10 @@ namespace mpqsort::helpers {
 
     template <typename NumPivot, typename RandomIt,
               typename Compare = std::less<typename std::iterator_traits<RandomIt>::value_type>>
-    void par_multiway_qsort(NumPivot pivot_num, RandomIt first, RandomIt last,
-                            Compare comp = Compare()) {
+    void _par_multiway_qsort(NumPivot pivot_num, RandomIt first, RandomIt last,
+                             Compare comp = Compare()) {
         // Use all available cores on a machine
-        par_multiway_qsort(pivot_num, omp_get_num_procs(), first, last, comp);
+        _par_multiway_qsort(pivot_num, omp_get_num_procs(), first, last, comp);
     }
 
     // Call sort based on policy type
@@ -139,27 +145,30 @@ namespace mpqsort::helpers {
             "Provided ExecutionPolicy is not valid. Use predefined policies from namespace "
             "mpqsort::execution.");
 
-        if constexpr (is_same_decay_v<ExecutionPolicy, decltype(execution::seq)>) {
+        if constexpr (_is_same_decay_v<ExecutionPolicy, decltype(execution::seq)>) {
             // Call with one pivot
-            seq_multiway_qsort(1, std::forward<T>(args)...);
-        } else if constexpr (is_same_decay_v<ExecutionPolicy, decltype(execution::seq_two_way)>) {
+            _seq_multiway_qsort(1, std::forward<T>(args)...);
+        } else if constexpr (_is_same_decay_v<ExecutionPolicy, decltype(execution::seq_two_way)>) {
             // Call with two pivots
-            seq_multiway_qsort(2, std::forward<T>(args)...);
-        } else if constexpr (is_same_decay_v<ExecutionPolicy, decltype(execution::seq_multi_way)>) {
+            _seq_multiway_qsort(2, std::forward<T>(args)...);
+        } else if constexpr (_is_same_decay_v<ExecutionPolicy,
+                                              decltype(execution::seq_multi_way)>) {
             // Let algorithm decide how many pivots to use
-            seq_multiway_qsort(std::numeric_limits<int>::max, std::forward<T>(args)...);
-        } else if constexpr (is_same_decay_v<ExecutionPolicy, decltype(execution::par)>) {
+            _seq_multiway_qsort(std::numeric_limits<int>::max, std::forward<T>(args)...);
+        } else if constexpr (_is_same_decay_v<ExecutionPolicy, decltype(execution::par)>) {
             // Call with one pivot
-            par_multiway_qsort(1, std::forward<T>(args)...);
-        } else if constexpr (is_same_decay_v<ExecutionPolicy, decltype(execution::par_two_way)>) {
+            _par_multiway_qsort(1, std::forward<T>(args)...);
+        } else if constexpr (_is_same_decay_v<ExecutionPolicy, decltype(execution::par_two_way)>) {
             // Call with two pivots
-            par_multiway_qsort(2, std::forward<T>(args)...);
-        } else if constexpr (is_same_decay_v<ExecutionPolicy, decltype(execution::par_multi_way)>) {
+            _par_multiway_qsort(2, std::forward<T>(args)...);
+        } else if constexpr (_is_same_decay_v<ExecutionPolicy,
+                                              decltype(execution::par_multi_way)>) {
             // Let algorithm decide how many pivots to use
-            par_multiway_qsort(std::numeric_limits<int>::max, std::forward<T>(args)...);
-        }
-        else {
-            throw std::logic_error("Unknown policy. This should never happen as we test policy type at a beginning of a function.");
+            _par_multiway_qsort(std::numeric_limits<int>::max, std::forward<T>(args)...);
+        } else {
+            throw std::invalid_argument(
+                "Unknown policy. This should never happen as we test policy type at a beginning of "
+                "a function.");
         }
     }
 }  // namespace mpqsort::helpers
@@ -176,7 +185,7 @@ namespace mpqsort {
      * @param last Last element of a container
      */
     template <typename RandomIt> void sort(RandomIt first, RandomIt last) {
-        helpers::seq_multiway_qsort(1, first, last);
+        helpers::_seq_multiway_qsort(1, first, last);
     }
 
     /**
@@ -222,7 +231,7 @@ namespace mpqsort {
      */
     template <typename RandomIt, typename Compare>
     void sort(RandomIt first, RandomIt last, Compare comp) {
-        helpers::seq_multiway_qsort(1, first, last, comp);
+        helpers::_seq_multiway_qsort(1, first, last, comp);
     }
 
     /**

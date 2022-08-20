@@ -64,33 +64,48 @@ TEMPLATE_LIST_TEST_CASE("Execution policy type trait disallowed policies", TAG.I
 
 // Test if all sort prototypes can be called and instantiated (without policies)
 TEST_CASE("Instantiation of a sort overloads without policy", TAG.SORT_ALL) {
-    std::vector<int> test_vector{0, 0};
+    std::vector<int> test_vector{2, 1};
     auto first = test_vector.begin();
     auto last = test_vector.end();
+    std::vector<int> test_vector_res{1, 2};
 
-    mpqsort::sort(first, last);
-    mpqsort::sort(first, last, std::greater<int>());
+    SECTION("(iter, iter) template") { mpqsort::sort(first, last); }
+
+    SECTION("(iter, iter, comp) template") { mpqsort::sort(first, last, std::less<int>()); }
+
+    REQUIRE_THAT(test_vector, Catch::Equals(test_vector_res));
 }
 
 // Test if all sort prototypes can be called and instantiated (with policies)
 TEMPLATE_LIST_TEST_CASE("Instantiation of a sort overloads with policy", TAG.SORT_ALL,
                         ALLOWED_EXECUTION_POLICIES) {
-    std::vector<int> test_vector{0, 0};
+    std::vector<int> test_vector{2, 1};
     auto first = test_vector.begin();
     auto last = test_vector.end();
+    std::vector<int> test_vector_res{1, 2};
 
     auto policy = TestType{};
     int cores = 4;
 
-    mpqsort::sort(policy, first, last);
-    mpqsort::sort(policy, first, last, std::greater<int>());
+    SECTION("(policy, iter, iter template") { mpqsort::sort(policy, first, last); }
 
-    // Run only if parallel policy. Sequential policy + cores does not make sense and we do not have a prototype for that
-    if constexpr (mpqsort::execution::is_parallel_execution_policy_v<TestType>)
-    {
-        mpqsort::sort(policy, cores, first, last);
-        mpqsort::sort(policy, cores, first, last, std::greater<int>());
+    SECTION("(policy, iter, iter, comp) template") {
+        mpqsort::sort(policy, first, last, std::less<int>());
     }
+
+    // Run only if parallel policy. Sequential policy + cores does not make sense and we do not have
+    // a prototype for that
+    if constexpr (mpqsort::execution::is_parallel_execution_policy_v<TestType>) {
+        SECTION("(policy, cores, iter, iter) template") {
+            mpqsort::sort(policy, cores, first, last);
+        }
+
+        SECTION("(policy, cores, iter, iter, comp) template") {
+            mpqsort::sort(policy, cores, first, last, std::less<int>());
+        }
+    }
+
+    REQUIRE_THAT(test_vector, Catch::Equals(test_vector_res));
 }
 
 // Test correctness of implementations
