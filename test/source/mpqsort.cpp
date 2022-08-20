@@ -73,7 +73,7 @@ TEST_CASE("Instantiation of a sort overloads without policy", TAG.SORT_ALL) {
 }
 
 // Test if all sort prototypes can be called and instantiated (with policies)
-TEMPLATE_LIST_TEST_CASE("Instantiation of a short overloads with policy", TAG.SORT_ALL,
+TEMPLATE_LIST_TEST_CASE("Instantiation of a sort overloads with policy", TAG.SORT_ALL,
                         ALLOWED_EXECUTION_POLICIES) {
     std::vector<int> test_vector{0, 0};
     auto first = test_vector.begin();
@@ -83,9 +83,14 @@ TEMPLATE_LIST_TEST_CASE("Instantiation of a short overloads with policy", TAG.SO
     int cores = 4;
 
     mpqsort::sort(policy, first, last);
-    mpqsort::sort(policy, cores, first, last);
     mpqsort::sort(policy, first, last, std::greater<int>());
-    mpqsort::sort(policy, cores, first, last, std::greater<int>());
+
+    // Run only if parallel policy. Sequential policy + cores does not make sense and we do not have a prototype for that
+    if constexpr (mpqsort::execution::is_parallel_execution_policy_v<TestType>)
+    {
+        mpqsort::sort(policy, cores, first, last);
+        mpqsort::sort(policy, cores, first, last, std::greater<int>());
+    }
 }
 
 // Test correctness of implementations
