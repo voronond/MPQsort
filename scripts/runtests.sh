@@ -20,11 +20,6 @@ then
     cmake --build build/test/thread -j`nproc`
     ./build/test/thread/MPQsortTests --use-colour yes "$@"
 
-    echo "Running with memory sanitizer..."
-    cmake -S test -B build/test/memory -DUSE_SANITIZER=Memory
-    cmake --build build/test/memory -j`nproc`
-    ./build/test/memory/MPQsortTests --use-colour yes "$@"
-
     exit 0
 fi
 
