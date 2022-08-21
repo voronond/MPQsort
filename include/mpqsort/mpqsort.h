@@ -59,25 +59,31 @@ namespace mpqsort::execution {
 
     // Define own type trait to determine if we got policy type
 
+    template <typename T> struct _is_execution_policy_helper : std::false_type {};
+
     /**
-     * @brief Checks whether T is a execution policy type defined in MPQsort library.
+     * @brief Checks whether T is a execution policy type defined in MPQsort library. Automatically
+     * applies decay.
      * @tparam T - a type to check
      */
-    template <typename T> struct is_execution_policy : std::false_type {};
+    template <typename T> using is_execution_policy = _is_execution_policy_helper<std::decay_t<T>>;
+
+    template <typename T> struct _is_parallel_execution_policy_helper : std::false_type {};
 
     /**
      * @brief Checks whether T is a parallel execution policy type defined in MPQsort library.
      * @tparam T - a type to check
      */
-    template <typename T> struct is_parallel_execution_policy : std::false_type {};
+    template <typename T> using is_parallel_execution_policy
+        = _is_parallel_execution_policy_helper<std::decay_t<T>>;
 
     /**
-     * @brief Helper variable template to check the execution policy. Automatically applies decay
+     * @brief Helper variable template to check the execution policy. Automatically applies decay.
      * type trait.
      * @tparam T - a type to check
      */
     template <typename T> inline constexpr bool is_execution_policy_v
-        = is_execution_policy<std::decay_t<T>>::value;
+        = _is_execution_policy_helper<std::decay_t<T>>::value;
 
     /**
      * @brief Helper variable template to check the execution policy. Automatically applies decay
@@ -85,22 +91,26 @@ namespace mpqsort::execution {
      * @tparam T - a type to check
      */
     template <typename T> inline constexpr bool is_parallel_execution_policy_v
-        = is_parallel_execution_policy<std::decay_t<T>>::value;
+        = _is_parallel_execution_policy_helper<std::decay_t<T>>::value;
 
     // Allowed execution policies
-    template <> struct is_execution_policy<sequenced_policy_two_way> : std::true_type {};
-    template <> struct is_execution_policy<sequenced_policy_multi_way> : std::true_type {};
-    template <> struct is_execution_policy<parallel_policy_two_way> : std::true_type {};
-    template <> struct is_execution_policy<parallel_policy_multi_way> : std::true_type {};
+    template <> struct _is_execution_policy_helper<sequenced_policy_two_way> : std::true_type {};
+    template <> struct _is_execution_policy_helper<sequenced_policy_multi_way> : std::true_type {};
+    template <> struct _is_execution_policy_helper<parallel_policy_two_way> : std::true_type {};
+    template <> struct _is_execution_policy_helper<parallel_policy_multi_way> : std::true_type {};
 
-    template <> struct is_parallel_execution_policy<parallel_policy_two_way> : std::true_type {};
-    template <> struct is_parallel_execution_policy<parallel_policy_multi_way> : std::true_type {};
+    template <> struct _is_parallel_execution_policy_helper<parallel_policy_two_way>
+        : std::true_type {};
+    template <> struct _is_parallel_execution_policy_helper<parallel_policy_multi_way>
+        : std::true_type {};
 
     // Allowed STD execution policies
-    template <> struct is_execution_policy<std::execution::sequenced_policy> : std::true_type {};
-    template <> struct is_execution_policy<std::execution::parallel_policy> : std::true_type {};
+    template <> struct _is_execution_policy_helper<std::execution::sequenced_policy>
+        : std::true_type {};
+    template <> struct _is_execution_policy_helper<std::execution::parallel_policy>
+        : std::true_type {};
 
-    template <> struct is_parallel_execution_policy<std::execution::parallel_policy>
+    template <> struct _is_parallel_execution_policy_helper<std::execution::parallel_policy>
         : std::true_type {};
 }  // namespace mpqsort::execution
 

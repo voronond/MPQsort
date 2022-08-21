@@ -15,7 +15,8 @@ using namespace mpqsort;
 // Declaration of helpers and variables
 
 struct _TAG {
-    const std::string IS_EXECUTION_POLICY = "[is_execution_policy_v]";
+    const std::string IS_EXECUTION_POLICY = "[is_execution_policy]";
+    const std::string IS_PARALLEL_EXECUTION_POLICY = "[is_parallel_execution_policy]";
     const std::string SEQ = "[seq_sort]";
     const std::string SEQ_TWO_WAY = "[seq_two_way_sort]";
     const std::string SEQ_MULTIWAY = "[seq_multiway_sort]";
@@ -38,6 +39,16 @@ using ALLOWED_EXECUTION_POLICIES
                  decltype(execution::par), decltype(execution::seq_two_way),
                  decltype(execution::seq_multi_way), decltype(execution::seq)>;
 
+// Declare parallel execution policies
+using PARALLEL_EXECUTION_POLICIES
+    = std::tuple<decltype(execution::par_two_way), decltype(execution::par_multi_way),
+                 decltype(execution::par)>;
+
+// Declare sequential execution policies
+using SEQUENTIAL_EXECUTION_POLICIES
+    = std::tuple<decltype(execution::seq_two_way), decltype(execution::seq_multi_way),
+                 decltype(execution::seq)>;
+
 // Some disallowed execution policies
 using DISALLOWED_EXECUTION_POLICIES
     = std::tuple<int, bool, char, float, std::string, decltype(std::execution::par_unseq)>;
@@ -52,14 +63,73 @@ TEST_CASE("Sort version") {
 // Type trait should return true for all allowed policies
 TEMPLATE_LIST_TEST_CASE("Execution policy type trait allowed policies", TAG.IS_EXECUTION_POLICY,
                         ALLOWED_EXECUTION_POLICIES) {
-    REQUIRE(std::is_swappable_v<int>);
-    CHECK(execution::is_execution_policy_v<TestType>);
+    // Test type trait helper
+    REQUIRE(execution::is_execution_policy_v<TestType>);
+    REQUIRE(execution::is_execution_policy_v<const TestType>);
+    REQUIRE(execution::is_execution_policy_v<const TestType&>);
+    REQUIRE(execution::is_execution_policy_v<const TestType&&>);
+    REQUIRE(execution::is_execution_policy_v<TestType&&>);
+
+    // Test type trait
+    REQUIRE(execution::is_execution_policy<TestType>::value);
+    REQUIRE(execution::is_execution_policy<const TestType>::value);
+    REQUIRE(execution::is_execution_policy<const TestType&>::value);
+    REQUIRE(execution::is_execution_policy<const TestType&&>::value);
+    REQUIRE(execution::is_execution_policy<TestType&&>::value);
 }
 
 // Type trait should return false for all disallowed policies
 TEMPLATE_LIST_TEST_CASE("Execution policy type trait disallowed policies", TAG.IS_EXECUTION_POLICY,
                         DISALLOWED_EXECUTION_POLICIES) {
-    CHECK_FALSE(execution::is_execution_policy_v<TestType>);
+    // Test type trait helper
+    REQUIRE_FALSE(execution::is_execution_policy_v<TestType>);
+    REQUIRE_FALSE(execution::is_execution_policy_v<const TestType>);
+    REQUIRE_FALSE(execution::is_execution_policy_v<const TestType&>);
+    REQUIRE_FALSE(execution::is_execution_policy_v<const TestType&&>);
+    REQUIRE_FALSE(execution::is_execution_policy_v<TestType&&>);
+
+    // Test type trait
+    REQUIRE_FALSE(execution::is_execution_policy<TestType>::value);
+    REQUIRE_FALSE(execution::is_execution_policy<const TestType>::value);
+    REQUIRE_FALSE(execution::is_execution_policy<const TestType&>::value);
+    REQUIRE_FALSE(execution::is_execution_policy<const TestType&&>::value);
+    REQUIRE_FALSE(execution::is_execution_policy<TestType&&>::value);
+}
+
+// Type trait should return true for parallel policies
+TEMPLATE_LIST_TEST_CASE("Execution policy type trait parallel policies for parallel policies",
+                        TAG.IS_PARALLEL_EXECUTION_POLICY, PARALLEL_EXECUTION_POLICIES) {
+    // Test type trait helper
+    REQUIRE(execution::is_parallel_execution_policy_v<TestType>);
+    REQUIRE(execution::is_parallel_execution_policy_v<const TestType>);
+    REQUIRE(execution::is_parallel_execution_policy_v<const TestType&>);
+    REQUIRE(execution::is_parallel_execution_policy_v<const TestType&&>);
+    REQUIRE(execution::is_parallel_execution_policy_v<TestType&&>);
+
+    // Test type trait
+    REQUIRE(execution::is_parallel_execution_policy<TestType>::value);
+    REQUIRE(execution::is_parallel_execution_policy<const TestType>::value);
+    REQUIRE(execution::is_parallel_execution_policy<const TestType&>::value);
+    REQUIRE(execution::is_parallel_execution_policy<const TestType&&>::value);
+    REQUIRE(execution::is_parallel_execution_policy<TestType&&>::value);
+}
+
+// Type trait should return true for parallel policies
+TEMPLATE_LIST_TEST_CASE("Execution policy type trait parallel policies for sequential policies",
+                        TAG.IS_PARALLEL_EXECUTION_POLICY, SEQUENTIAL_EXECUTION_POLICIES) {
+    // Test type trait helper
+    REQUIRE_FALSE(execution::is_parallel_execution_policy_v<TestType>);
+    REQUIRE_FALSE(execution::is_parallel_execution_policy_v<const TestType>);
+    REQUIRE_FALSE(execution::is_parallel_execution_policy_v<const TestType&>);
+    REQUIRE_FALSE(execution::is_parallel_execution_policy_v<const TestType&&>);
+    REQUIRE_FALSE(execution::is_parallel_execution_policy_v<TestType&&>);
+
+    // Test type trait
+    REQUIRE_FALSE(execution::is_parallel_execution_policy<TestType>::value);
+    REQUIRE_FALSE(execution::is_parallel_execution_policy<const TestType>::value);
+    REQUIRE_FALSE(execution::is_parallel_execution_policy<const TestType&>::value);
+    REQUIRE_FALSE(execution::is_parallel_execution_policy<const TestType&&>::value);
+    REQUIRE_FALSE(execution::is_parallel_execution_policy<TestType&&>::value);
 }
 
 // Test if all sort prototypes can be called and instantiated (without policies)
@@ -147,14 +217,14 @@ TEMPLATE_LIST_TEST_CASE("Sort vector provided in reversed order", TAG.SORT_ALL,
 TEMPLATE_LIST_TEST_CASE("Sort custom type with defined comparator", TAG.SORT_ALL,
                         ALLOWED_EXECUTION_POLICIES) {
     // Declare custom type and comparators
-    struct _TEST_STRUCT {
-        _TEST_STRUCT(std::string&& _str, int _num) : str(_str), num(_num) {}
+    struct _test_struct {
+        _test_struct(std::string&& _str, int _num) : str(_str), num(_num) {}
         std::string str;
         int num;
 
-        bool operator==(const _TEST_STRUCT& o) const { return str == o.str && num == o.num; }
+        bool operator==(const _test_struct& o) const { return str == o.str && num == o.num; }
 
-        bool operator!=(const _TEST_STRUCT& o) const { return !(*this == o); }
+        bool operator!=(const _test_struct& o) const { return !(*this == o); }
     };
 
     auto lambda_comparator = [](const auto& a, const auto& b) {
@@ -168,7 +238,7 @@ TEMPLATE_LIST_TEST_CASE("Sort custom type with defined comparator", TAG.SORT_ALL
     };
 
     struct functor_comparator {
-        bool operator()(const _TEST_STRUCT& a, const _TEST_STRUCT& b) {
+        bool operator()(const _test_struct& a, const _test_struct& b) {
             if (a.str < b.str)
                 return true;
             else if (a.str == b.str && a.num < b.num)
@@ -179,9 +249,9 @@ TEMPLATE_LIST_TEST_CASE("Sort custom type with defined comparator", TAG.SORT_ALL
         }
     };
 
-    std::vector<_TEST_STRUCT> test_vector{_TEST_STRUCT("z", 2), _TEST_STRUCT("a", 2),
-                                          _TEST_STRUCT("g", 6), _TEST_STRUCT("z", 2),
-                                          _TEST_STRUCT("z", 1)};
+    std::vector<_test_struct> test_vector{_test_struct("z", 2), _test_struct("a", 2),
+                                          _test_struct("g", 6), _test_struct("z", 2),
+                                          _test_struct("z", 1)};
 
     auto test_vector_res = test_vector;
 
