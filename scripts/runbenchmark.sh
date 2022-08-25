@@ -12,9 +12,10 @@ function build {
 
 if [[ "${1,,}" == "silent" ]]
 then
+    shift
     build &>/dev/null
 else
     build
 fi
 
-./build/benchmark/MPQsortBenchmarks
+./build/benchmark/MPQsortBenchmarks "$@"
