@@ -20,6 +20,14 @@ CPMAddPackage(
     VERSION 1.7.0
     OPTIONS "BENCHMARK_ENABLE_TESTING Off"
 )
+# Check if TBB installed and if not, build from sources
+# TBB is not currenty compatible with GCC 12 so it would be better to download binary and extract that to /usr/local and rename folder to tbb
+# Tutorial: https://stackoverflow.com/questions/36534706/trouble-linking-intel-tbb-library
+CPMFindPackage(
+    NAME TBB
+    GITHUB_REPOSITORY oneapi-src/oneTBB
+    VERSION 2021.5.0
+)
 CPMAddPackage("gh:TheLartians/Format.cmake@1.7.3")
 
 CPMAddPackage(NAME MPQsort SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/..)
@@ -29,5 +37,5 @@ CPMAddPackage(NAME MPQsort SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/..)
 file(GLOB sources CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/source/*.cpp)
 add_executable(${PROJECT_NAME} ${sources})
 
-target_link_libraries(${PROJECT_NAME} benchmark::benchmark MPQsort::MPQsort)
+target_link_libraries(${PROJECT_NAME} TBB::tbb benchmark::benchmark MPQsort::MPQsort)
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 17)
