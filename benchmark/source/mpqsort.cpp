@@ -21,6 +21,24 @@ static void BM_std_sort(benchmark::State& state) {
 // Register the function as a benchmark
 BENCHMARK(BM_std_sort);
 
+static void BM_par_std_sort(benchmark::State& state) {
+
+    for (auto _ : state) {
+        std::sort(std::execution::par, vec.begin(), vec.end());
+    }
+}
+// Register the function as a benchmark
+BENCHMARK(BM_par_std_sort);
+
+static void BM_mpqsort_sort(benchmark::State& state) {
+
+    for (auto _ : state) {
+        mpqsort::sort(mpqsort::execution::par_multi_way, vec.begin(), vec.end());
+    }
+}
+// Register the function as a benchmark
+BENCHMARK(BM_mpqsort_sort);
+
 static void BM_gnu_qs_sort(benchmark::State& state) {
     for (auto _ : state) {
         // In-place parallel qsort
