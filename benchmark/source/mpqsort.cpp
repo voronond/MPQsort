@@ -7,7 +7,7 @@
 #include <vector>
 #include <parallel/algorithm>
 #include <tbb/tbb.h>
-#include <cilk/cilk.h>
+#include <thrust/sort.h>
 
 // TODO just for testing purposes
 std::vector<int> vec;
@@ -56,3 +56,12 @@ static void BM_tbb_sort(benchmark::State& state) {
 }
 // Register the function as a benchmark
 BENCHMARK(BM_tbb_sort);
+
+static void BM_nvidia_thrust_sort(benchmark::State& state) {
+    for (auto _ : state) {
+        // Out-of-place parallel mergesort
+        thrust::sort(vec.begin(), vec.end());
+    }
+}
+// Register the function as a benchmark
+BENCHMARK(BM_nvidia_thrust_sort);
