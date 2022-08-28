@@ -1,19 +1,18 @@
 #include <benchmark/benchmark.h>
 #include <mpqsort/mpqsort.h>
 #include <mpqsort/version.h>
-
-#include <algorithm>
-#include <string>
-#include <vector>
-#include <parallel/algorithm>
 #include <tbb/tbb.h>
 #include <thrust/sort.h>
+
+#include <algorithm>
+#include <parallel/algorithm>
+#include <string>
+#include <vector>
 
 // TODO just for testing purposes
 std::vector<int> vec;
 
 static void BM_std_sort(benchmark::State& state) {
-
     for (auto _ : state) {
         std::sort(vec.begin(), vec.end());
     }
@@ -22,7 +21,6 @@ static void BM_std_sort(benchmark::State& state) {
 BENCHMARK(BM_std_sort);
 
 static void BM_par_std_sort(benchmark::State& state) {
-
     for (auto _ : state) {
         std::sort(std::execution::par, vec.begin(), vec.end());
     }
@@ -31,7 +29,6 @@ static void BM_par_std_sort(benchmark::State& state) {
 BENCHMARK(BM_par_std_sort);
 
 static void BM_mpqsort_sort(benchmark::State& state) {
-
     for (auto _ : state) {
         mpqsort::sort(mpqsort::execution::par_multi_way, vec.begin(), vec.end());
     }

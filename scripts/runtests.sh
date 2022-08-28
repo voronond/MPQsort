@@ -11,18 +11,18 @@ then
     shift
 
     echo "Running with address sanitizer..."
-    cmake -S test -B build/test/address -DUSE_SANITIZER=Address
+    cmake -S test -B build/test/address -DUSE_SANITIZER=Address -DENABLE_COMPILER_WARNINGS=ON
     cmake --build build/test/address -j`nproc`
     ./build/test/address/MPQsortTests --use-colour yes "$@"
 
     echo "Running with thread sanitizer..."
-    cmake -S test -B build/test/thread -DUSE_SANITIZER=Thread
+    cmake -S test -B build/test/thread -DUSE_SANITIZER=Thread -DENABLE_COMPILER_WARNINGS=ON
     cmake --build build/test/thread -j`nproc`
     ./build/test/thread/MPQsortTests --use-colour yes "$@"
 
     exit 0
 fi
 
-cmake -S test -B build/test
+cmake -S test -B build/test -DENABLE_COMPILER_WARNINGS=ON
 cmake --build build/test -j`nproc`
 ./build/test/MPQsortTests --use-colour yes "$@"

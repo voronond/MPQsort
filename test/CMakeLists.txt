@@ -5,6 +5,7 @@ project(MPQsortTests LANGUAGES CXX)
 # ---- Options ----
 
 option(ENABLE_TEST_COVERAGE "Enable test coverage" OFF)
+option(ENABLE_COMPILER_WARNINGS "Enable compiler warnings flags" OFF)
 
 # --- Import tools ----
 
@@ -26,10 +27,12 @@ target_link_libraries(${PROJECT_NAME} MPQsort::MPQsort Catch2::Catch2)
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 17)
 
 # enable compiler warnings
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-    target_compile_options(MPQsort PUBLIC -Wall -Wpedantic -Wextra -Werror)
-elseif(MSVC)
-    target_compile_options(MPQsort PUBLIC /W4 /WX)
+if(ENABLE_COMPILER_WARNINGS)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+        target_compile_options(MPQsort PUBLIC -Wall -Wpedantic -Wextra -Werror)
+    elseif(MSVC)
+        target_compile_options(MPQsort PUBLIC /W4 /WX)
+    endif()
 endif()
 
 # ---- Add MPQsortTests ----
