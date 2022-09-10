@@ -1,7 +1,6 @@
+#include <cxxopts.hpp>
 #include <iostream>
 #include <random>
-
-#include <cxxopts.hpp>
 #include <string>
 
 auto main(int argc, char** argv) -> int {
@@ -32,13 +31,11 @@ auto main(int argc, char** argv) -> int {
     std::random_device random_dev;
     std::mt19937 en(random_dev());
 
-    if (distribution == "unif")
-    {
+    if (distribution == "unif") {
         std::uniform_int_distribution<int32_t> uniform_dist(from, to);
 
         std::cout << num << std::endl;
-        for (int32_t i = 0; i < num; ++i)
-            std::cout << uniform_dist(en) << " ";
+        for (int32_t i = 0; i < num; ++i) std::cout << uniform_dist(en) << " ";
         std::cout << std::endl;
     }
 
