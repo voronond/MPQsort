@@ -99,94 +99,123 @@ template <typename T, int seed = 0> struct ReverseOrderVectorFixture
     name(ReverseOrder, double);
 
 // Run std sort benchmarks
-#define std_sort(dataType, type)                                                         \
-    BENCHMARK_TEMPLATE_F(dataType##VectorFixture, BM_std_sort_##dataType##_##type, type) \
-    (benchmark::State & state) {                                                         \
-        for (auto _ : state) {                                                           \
-            std::sort(vec.begin(), vec.end());                                           \
-        }                                                                                \
-    }
+#define std_sort(dataType, type)                                                                \
+    BENCHMARK_TEMPLATE_DEFINE_F(dataType##VectorFixture, BM_std_sort_##dataType##_##type, type) \
+    (benchmark::State & state) {                                                                \
+        for (auto _ : state) {                                                                  \
+            std::sort(vec.begin(), vec.end());                                                  \
+        }                                                                                       \
+    }                                                                                           \
+    BENCHMARK_REGISTER_F(dataType##VectorFixture, BM_std_sort_##dataType##_##type)              \
+        ->MeasureProcessCPUTime()                                                               \
+        ->UseRealTime();
 
 register_bench(std_sort);
 
 // Run std parallel sort benchmarks
-#define std_parallel_sort(dataType, type)                                                    \
-    BENCHMARK_TEMPLATE_F(dataType##VectorFixture, BM_par_std_sort_##dataType##_##type, type) \
-    (benchmark::State & state) {                                                             \
-        for (auto _ : state) {                                                               \
-            std::sort(std::execution::par, vec.begin(), vec.end());                          \
-        }                                                                                    \
-    }
+#define std_parallel_sort(dataType, type)                                                     \
+    BENCHMARK_TEMPLATE_DEFINE_F(dataType##VectorFixture, BM_par_std_sort_##dataType##_##type, \
+                                type)                                                         \
+    (benchmark::State & state) {                                                              \
+        for (auto _ : state) {                                                                \
+            std::sort(std::execution::par, vec.begin(), vec.end());                           \
+        }                                                                                     \
+    }                                                                                         \
+    BENCHMARK_REGISTER_F(dataType##VectorFixture, BM_par_std_sort_##dataType##_##type)        \
+        ->MeasureProcessCPUTime()                                                             \
+        ->UseRealTime();
 
 register_bench(std_parallel_sort);
 
 // Run mpqsort benchmarks
-#define mpqsort_sort(dataType, type)                                                         \
-    BENCHMARK_TEMPLATE_F(dataType##VectorFixture, BM_mpqsort_sort_##dataType##_##type, type) \
-    (benchmark::State & state) {                                                             \
-        for (auto _ : state) {                                                               \
-            mpqsort::sort(mpqsort::execution::par_multi_way, vec.begin(), vec.end());        \
-        }                                                                                    \
-    }
+#define mpqsort_sort(dataType, type)                                                          \
+    BENCHMARK_TEMPLATE_DEFINE_F(dataType##VectorFixture, BM_mpqsort_sort_##dataType##_##type, \
+                                type)                                                         \
+    (benchmark::State & state) {                                                              \
+        for (auto _ : state) {                                                                \
+            mpqsort::sort(mpqsort::execution::par_multi_way, vec.begin(), vec.end());         \
+        }                                                                                     \
+    }                                                                                         \
+    BENCHMARK_REGISTER_F(dataType##VectorFixture, BM_mpqsort_sort_##dataType##_##type)        \
+        ->MeasureProcessCPUTime()                                                             \
+        ->UseRealTime();
 
 register_bench(mpqsort_sort);
 
 // Run gnu qs sort benchmarks
 // In-place parallel qsort
-#define gnu_qs_sort(dataType, type)                                                         \
-    BENCHMARK_TEMPLATE_F(dataType##VectorFixture, BM_gnu_qs_sort_##dataType##_##type, type) \
-    (benchmark::State & state) {                                                            \
-        for (auto _ : state) {                                                              \
-            __gnu_parallel::sort(vec.begin(), vec.end(), __gnu_parallel::quicksort_tag());  \
-        }                                                                                   \
-    }
+#define gnu_qs_sort(dataType, type)                                                                \
+    BENCHMARK_TEMPLATE_DEFINE_F(dataType##VectorFixture, BM_gnu_qs_sort_##dataType##_##type, type) \
+    (benchmark::State & state) {                                                                   \
+        for (auto _ : state) {                                                                     \
+            __gnu_parallel::sort(vec.begin(), vec.end(), __gnu_parallel::quicksort_tag());         \
+        }                                                                                          \
+    }                                                                                              \
+    BENCHMARK_REGISTER_F(dataType##VectorFixture, BM_gnu_qs_sort_##dataType##_##type)              \
+        ->MeasureProcessCPUTime()                                                                  \
+        ->UseRealTime();
 
 register_bench(gnu_qs_sort);
 
 // Run gnu_bqs_sort benchmarks
 // In-place balanced parallel qsort
-#define gnu_bqs_sort(dataType, type)                                                         \
-    BENCHMARK_TEMPLATE_F(dataType##VectorFixture, BM_gnu_bqs_sort_##dataType##_##type, type) \
-    (benchmark::State & state) {                                                             \
-        for (auto _ : state) {                                                               \
-            __gnu_parallel::sort(vec.begin(), vec.end(),                                     \
-                                 __gnu_parallel::balanced_quicksort_tag());                  \
-        }                                                                                    \
-    }
+#define gnu_bqs_sort(dataType, type)                                                          \
+    BENCHMARK_TEMPLATE_DEFINE_F(dataType##VectorFixture, BM_gnu_bqs_sort_##dataType##_##type, \
+                                type)                                                         \
+    (benchmark::State & state) {                                                              \
+        for (auto _ : state) {                                                                \
+            __gnu_parallel::sort(vec.begin(), vec.end(),                                      \
+                                 __gnu_parallel::balanced_quicksort_tag());                   \
+        }                                                                                     \
+    }                                                                                         \
+    BENCHMARK_REGISTER_F(dataType##VectorFixture, BM_gnu_bqs_sort_##dataType##_##type)        \
+        ->MeasureProcessCPUTime()                                                             \
+        ->UseRealTime();
 
 register_bench(gnu_bqs_sort);
 
 // Run gnu mwms sort benchmarks
 // Out-of-place parallel mergesort
-#define gnu_mwms_sort(dataType, type)                                                         \
-    BENCHMARK_TEMPLATE_F(dataType##VectorFixture, BM_gnu_mwms_sort_##dataType##_##type, type) \
-    (benchmark::State & state) {                                                              \
-        for (auto _ : state) {                                                                \
-            __gnu_parallel::sort(vec.begin(), vec.end(),                                      \
-                                 __gnu_parallel::multiway_mergesort_tag());                   \
-        }                                                                                     \
-    }
+#define gnu_mwms_sort(dataType, type)                                                          \
+    BENCHMARK_TEMPLATE_DEFINE_F(dataType##VectorFixture, BM_gnu_mwms_sort_##dataType##_##type, \
+                                type)                                                          \
+    (benchmark::State & state) {                                                               \
+        for (auto _ : state) {                                                                 \
+            __gnu_parallel::sort(vec.begin(), vec.end(),                                       \
+                                 __gnu_parallel::multiway_mergesort_tag());                    \
+        }                                                                                      \
+    }                                                                                          \
+    BENCHMARK_REGISTER_F(dataType##VectorFixture, BM_gnu_mwms_sort_##dataType##_##type)        \
+        ->MeasureProcessCPUTime()                                                              \
+        ->UseRealTime();
 
 register_bench(gnu_mwms_sort);
 
 // Run tbb sort benchmarks
-#define tbb_sort(dataType, type)                                                         \
-    BENCHMARK_TEMPLATE_F(dataType##VectorFixture, BM_tbb_sort_##dataType##_##type, type) \
-    (benchmark::State & state) {                                                         \
-        for (auto _ : state) {                                                           \
-            tbb::parallel_sort(vec.begin(), vec.end());                                  \
-        }                                                                                \
-    }
+#define tbb_sort(dataType, type)                                                                \
+    BENCHMARK_TEMPLATE_DEFINE_F(dataType##VectorFixture, BM_tbb_sort_##dataType##_##type, type) \
+    (benchmark::State & state) {                                                                \
+        for (auto _ : state) {                                                                  \
+            tbb::parallel_sort(vec.begin(), vec.end());                                         \
+        }                                                                                       \
+    }                                                                                           \
+    BENCHMARK_REGISTER_F(dataType##VectorFixture, BM_tbb_sort_##dataType##_##type)              \
+        ->MeasureProcessCPUTime()                                                               \
+        ->UseRealTime();
 
 register_bench(tbb_sort);
 
 // Run nvidia thrust sort benchmarks
-#define nvidia_thrust_sort(dataType, type)                                                         \
-    BENCHMARK_TEMPLATE_F(dataType##VectorFixture, BM_nvidia_thrust_sort_##dataType##_##type, type) \
-    (benchmark::State & state) {                                                                   \
-        for (auto _ : state) {                                                                     \
-            thrust::sort(vec.begin(), vec.end());                                                  \
-        }                                                                                          \
-    }
+#define nvidia_thrust_sort(dataType, type)                                                   \
+    BENCHMARK_TEMPLATE_DEFINE_F(dataType##VectorFixture,                                     \
+                                BM_nvidia_thrust_sort_##dataType##_##type, type)             \
+    (benchmark::State & state) {                                                             \
+        for (auto _ : state) {                                                               \
+            thrust::sort(vec.begin(), vec.end());                                            \
+        }                                                                                    \
+    }                                                                                        \
+    BENCHMARK_REGISTER_F(dataType##VectorFixture, BM_nvidia_thrust_sort_##dataType##_##type) \
+        ->MeasureProcessCPUTime()                                                            \
+        ->UseRealTime();
 
 register_bench(nvidia_thrust_sort);

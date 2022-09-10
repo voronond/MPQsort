@@ -18,4 +18,4 @@ else
     build
 fi
 
-./build/benchmark/MPQsortBenchmarks "$@"
+./build/benchmark/MPQsortBenchmarks --benchmark_time_unit=ms "$@"
