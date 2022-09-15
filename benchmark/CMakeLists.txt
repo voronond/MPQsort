@@ -46,4 +46,11 @@ add_executable(${PROJECT_NAME} ${sources})
 target_link_libraries(
     ${PROJECT_NAME} Thrust::OMP::Host TBB::tbb benchmark::benchmark MPQsort::MPQsort
 )
+
+# Link OpenMP dependencies
+find_package(OpenMP)
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(${PROJECT_NAME} OpenMP::OpenMP_CXX)
+endif()
+
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 17)
