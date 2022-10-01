@@ -14,7 +14,10 @@
 #include <vector>
 
 // TODO remove when released
-#define TESTING
+//#define TESTING
+
+// Possible vector types
+using VECTOR_TYPES = std::tuple<int, short, double>;
 
 template <typename T, long Size = -1, int From = -1, int To = -1> struct VectorFixture
     : public benchmark::Fixture {
@@ -22,16 +25,13 @@ template <typename T, long Size = -1, int From = -1, int To = -1> struct VectorF
         : from(From == -1 ? std::numeric_limits<T>::min() : From),
           to(To == -1 ? std::numeric_limits<T>::max() : To) {}
 
-    void TearDown(const benchmark::State& state) override { this->DeallocateVector(); }
-
     void AllocateVector() {
         // If size not defined, use half of the memory as a default
         this->vec.resize(Size == -1 ? this->VectorSizeToFillHalfMemory() : Size);
     }
 
     void DeallocateVector() {
-        this->vec.clear();
-        this->vec.shrink_to_fit();
+        std::vector<T>().swap(this->vec);
     }
 
     // Calculate how many elements to generate to fill half of the system memory
@@ -41,11 +41,18 @@ template <typename T, long Size = -1, int From = -1, int To = -1> struct VectorF
 #else
         auto pages = sysconf(_SC_PHYS_PAGES);
         auto page_size = sysconf(_SC_PAGE_SIZE);
+
         // Memory in bytes
         auto available_memory = pages * page_size;
-        auto allocate_memory = available_memory / (sizeof(T) * 2);
+        auto allocate_memory = available_memory / 4;
 
-        return allocate_memory;
+        // Get the largest type and compute number of elements based on that
+        // Result: occupied memory is different but number of elements the same
+        std::vector<int> sizes;
+        std::apply([&](auto&&... args) {((sizes.emplace_back(sizeof(args))), ...);}, VECTOR_TYPES());
+        auto number_of_elements = allocate_memory / *std::max_element(sizes.begin(), sizes.end());
+
+        return number_of_elements;
 #endif
     }
 
@@ -67,9 +74,12 @@ template <typename T, long Size = -1, int From = -1, int To = -1> struct VectorF
 template <typename T, long Size = -1, int From = -1, int To = -1, int Seed = 0>
 struct RandomVectorFixture : public VectorFixture<T, Size, From, To> {
     void SetUp(const benchmark::State& state) override {
+        this->DeallocateVector();
         this->AllocateVector();
         FillVectorRandom();
     }
+
+    void TearDown(const benchmark::State& state) override { this->DeallocateVector(); }
 
     void FillVectorRandom() {
         // Seed with a same value so that sort same sequences across runs
@@ -94,19 +104,25 @@ struct RandomVectorFixture : public VectorFixture<T, Size, From, To> {
 template <typename T, long Size = -1, int From = -1, int To = -1, int Seed = 0>
 struct SortedVectorFixture : public RandomVectorFixture<T, Size, From, To, Seed> {
     void SetUp(const benchmark::State& state) override {
+        this->DeallocateVector();
         this->AllocateVector();
         this->FillVectorRandom();
         std::sort(std::execution::par, this->vec.begin(), this->vec.end());
     }
+
+    void TearDown(const benchmark::State& state) override { this->DeallocateVector(); }
 };
 
 template <typename T, long Size = -1, int From = -1, int To = -1, int Seed = 0>
 struct ReverseOrderVectorFixture : public RandomVectorFixture<T, Size, From, To, Seed> {
     void SetUp(const benchmark::State& state) override {
+        this->DeallocateVector();
         this->AllocateVector();
         this->FillVectorRandom();
         std::sort(std::execution::par, this->vec.begin(), this->vec.end(), std::greater<T>());
     }
+
+    void TearDown(const benchmark::State& state) override { this->DeallocateVector(); }
 };
 
 // Stringify macro
