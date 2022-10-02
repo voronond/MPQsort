@@ -118,8 +118,13 @@ namespace mpqsort::helpers {
     // Extension of is_same applying decay_t automatically
     template <typename T, typename U> inline constexpr bool _is_same_decay_v
         = std::is_same<std::decay_t<T>, std::decay_t<U>>::value;
+}  // namespace mpqsort::helpers
 
-    // Helper functions
+/**
+ * @brief Implementation of multiway quicksort and multiway parallel quicksort
+ */
+namespace mpqsort::impl {
+    // ----- Main implementation START -----
     template <typename NumPivot, typename RandomIt,
               typename Compare = std::less<typename std::iterator_traits<RandomIt>::value_type>>
     void _seq_multiway_qsort(NumPivot pivot_num, RandomIt first, RandomIt last,
@@ -138,7 +143,9 @@ namespace mpqsort::helpers {
         UNUSED(cores);
         std::sort(first, last, comp);
     }
+    // ----- Main implementation END -----
 
+    // Wrapper for different arguments
     template <typename NumPivot, typename RandomIt,
               typename Compare = std::less<typename std::iterator_traits<RandomIt>::value_type>>
     void _par_multiway_qsort(NumPivot pivot_num, RandomIt first, RandomIt last,
@@ -155,24 +162,26 @@ namespace mpqsort::helpers {
             "Provided ExecutionPolicy is not valid. Use predefined policies from namespace "
             "mpqsort::execution.");
 
-        if constexpr (_is_same_decay_v<ExecutionPolicy, decltype(execution::seq)>) {
+        if constexpr (helpers::_is_same_decay_v<ExecutionPolicy, decltype(execution::seq)>) {
             // Call with one pivot
             _seq_multiway_qsort(1, std::forward<T>(args)...);
-        } else if constexpr (_is_same_decay_v<ExecutionPolicy, decltype(execution::seq_two_way)>) {
+        } else if constexpr (helpers::_is_same_decay_v<ExecutionPolicy,
+                                                       decltype(execution::seq_two_way)>) {
             // Call with two pivots
             _seq_multiway_qsort(2, std::forward<T>(args)...);
-        } else if constexpr (_is_same_decay_v<ExecutionPolicy,
-                                              decltype(execution::seq_multi_way)>) {
+        } else if constexpr (helpers::_is_same_decay_v<ExecutionPolicy,
+                                                       decltype(execution::seq_multi_way)>) {
             // Let algorithm decide how many pivots to use
             _seq_multiway_qsort(std::numeric_limits<int>::max, std::forward<T>(args)...);
-        } else if constexpr (_is_same_decay_v<ExecutionPolicy, decltype(execution::par)>) {
+        } else if constexpr (helpers::_is_same_decay_v<ExecutionPolicy, decltype(execution::par)>) {
             // Call with one pivot
             _par_multiway_qsort(1, std::forward<T>(args)...);
-        } else if constexpr (_is_same_decay_v<ExecutionPolicy, decltype(execution::par_two_way)>) {
+        } else if constexpr (helpers::_is_same_decay_v<ExecutionPolicy,
+                                                       decltype(execution::par_two_way)>) {
             // Call with two pivots
             _par_multiway_qsort(2, std::forward<T>(args)...);
-        } else if constexpr (_is_same_decay_v<ExecutionPolicy,
-                                              decltype(execution::par_multi_way)>) {
+        } else if constexpr (helpers::_is_same_decay_v<ExecutionPolicy,
+                                                       decltype(execution::par_multi_way)>) {
             // Let algorithm decide how many pivots to use
             _par_multiway_qsort(std::numeric_limits<int>::max, std::forward<T>(args)...);
         } else {
@@ -181,7 +190,7 @@ namespace mpqsort::helpers {
                 "a function.");
         }
     }
-}  // namespace mpqsort::helpers
+}  // namespace mpqsort::impl
 
 /**
  * @brief Contains public functions of the library
@@ -195,7 +204,7 @@ namespace mpqsort {
      * @param last Last element of a container
      */
     template <typename RandomIt> void sort(RandomIt first, RandomIt last) {
-        helpers::_seq_multiway_qsort(1, first, last);
+        impl::_seq_multiway_qsort(1, first, last);
     }
 
     /**
@@ -209,7 +218,7 @@ namespace mpqsort {
      */
     template <typename ExecutionPolicy, typename RandomIt>
     void sort(ExecutionPolicy&& policy, RandomIt first, RandomIt last) {
-        helpers::_call_sort(std::forward<ExecutionPolicy>(policy), first, last);
+        impl::_call_sort(std::forward<ExecutionPolicy>(policy), first, last);
     }
 
     /**
@@ -227,7 +236,7 @@ namespace mpqsort {
     template <typename ExecutionPolicy, typename Cores, typename RandomIt>
     void sort(ExecutionPolicy&& policy, Cores cores, RandomIt first, RandomIt last) {
         static_assert(std::is_integral_v<Cores>, "Integral required for cores");
-        helpers::_call_sort(std::forward<ExecutionPolicy>(policy), cores, first, last);
+        impl::_call_sort(std::forward<ExecutionPolicy>(policy), cores, first, last);
     }
 
     /**
@@ -241,7 +250,7 @@ namespace mpqsort {
      */
     template <typename RandomIt, typename Compare>
     void sort(RandomIt first, RandomIt last, Compare comp) {
-        helpers::_seq_multiway_qsort(1, first, last, comp);
+        impl::_seq_multiway_qsort(1, first, last, comp);
     }
 
     /**
@@ -257,7 +266,7 @@ namespace mpqsort {
      */
     template <typename ExecutionPolicy, typename RandomIt, typename Compare>
     void sort(ExecutionPolicy&& policy, RandomIt first, RandomIt last, Compare comp) {
-        helpers::_call_sort(std::forward<ExecutionPolicy>(policy), first, last, comp);
+        impl::_call_sort(std::forward<ExecutionPolicy>(policy), first, last, comp);
     }
 
     /**
@@ -277,6 +286,6 @@ namespace mpqsort {
     template <typename ExecutionPolicy, typename Cores, typename RandomIt, typename Compare>
     void sort(ExecutionPolicy&& policy, Cores cores, RandomIt first, RandomIt last, Compare comp) {
         static_assert(std::is_integral_v<Cores>, "Integral required for cores");
-        helpers::_call_sort(std::forward<ExecutionPolicy>(policy), cores, first, last, comp);
+        impl::_call_sort(std::forward<ExecutionPolicy>(policy), cores, first, last, comp);
     }
 }  // namespace mpqsort
