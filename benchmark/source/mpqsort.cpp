@@ -189,6 +189,7 @@ register_bench_default(std_sort);
 register_bench_small_sizes(std_sort);
 
 // Run std parallel sort benchmarks
+/*
 #define std_parallel_sort(dataType, bench, type, size, from, to)                                 \
     BENCHMARK_TEMPLATE_DEFINE_F(dataType##VectorFixture,                                         \
                                 BM_par_std_sort_##dataType##_##type##_##bench, type, size, from, \
@@ -211,6 +212,7 @@ register_bench_small_sizes(std_sort);
 
 register_bench_default(std_parallel_sort);
 register_bench_small_sizes(std_parallel_sort);
+*/
 
 // Run mpqsort benchmarks
 #define mpqsort_sort(dataType, bench, type, size, from, to)                                      \
