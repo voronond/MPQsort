@@ -14,7 +14,7 @@
 #include <vector>
 
 // TODO remove when released
-//#define TESTING
+#define TESTING
 
 // Possible vector types
 using VECTOR_TYPES = std::tuple<int, short, double>;
@@ -30,14 +30,15 @@ template <typename T, long Size = -1, int From = -1, int To = -1> struct VectorF
         this->vec.resize(Size == -1 ? this->VectorSizeToFillHalfMemory() : Size);
     }
 
-    void DeallocateVector() {
-        std::vector<T>().swap(this->vec);
-    }
+    void DeallocateVector() { std::vector<T>().swap(this->vec); }
+
+    void Destroy() { this->DeallocateVector(); }
 
     // Calculate how many elements to generate to fill half of the system memory
     auto VectorSizeToFillHalfMemory() const {
 #ifdef TESTING
-        return 1000000;
+        // return 1000000;
+        return 8 * 1024 * 1024 * (1024 / sizeof(double));
 #else
         auto pages = sysconf(_SC_PHYS_PAGES);
         auto page_size = sysconf(_SC_PAGE_SIZE);
@@ -49,7 +50,8 @@ template <typename T, long Size = -1, int From = -1, int To = -1> struct VectorF
         // Get the largest type and compute number of elements based on that
         // Result: occupied memory is different but number of elements the same
         std::vector<int> sizes;
-        std::apply([&](auto&&... args) {((sizes.emplace_back(sizeof(args))), ...);}, VECTOR_TYPES());
+        std::apply([&](auto&&... args) { ((sizes.emplace_back(sizeof(args))), ...); },
+                   VECTOR_TYPES());
         auto number_of_elements = allocate_memory / *std::max_element(sizes.begin(), sizes.end());
 
         return number_of_elements;
@@ -73,13 +75,11 @@ template <typename T, long Size = -1, int From = -1, int To = -1> struct VectorF
 
 template <typename T, long Size = -1, int From = -1, int To = -1, int Seed = 0>
 struct RandomVectorFixture : public VectorFixture<T, Size, From, To> {
-    void SetUp(const benchmark::State& state) override {
+    void Prepare() {
         this->DeallocateVector();
         this->AllocateVector();
         FillVectorRandom();
     }
-
-    void TearDown(const benchmark::State& state) override { this->DeallocateVector(); }
 
     void FillVectorRandom() {
         // Seed with a same value so that sort same sequences across runs
@@ -103,26 +103,22 @@ struct RandomVectorFixture : public VectorFixture<T, Size, From, To> {
 
 template <typename T, long Size = -1, int From = -1, int To = -1, int Seed = 0>
 struct SortedVectorFixture : public RandomVectorFixture<T, Size, From, To, Seed> {
-    void SetUp(const benchmark::State& state) override {
+    void Prepare() {
         this->DeallocateVector();
         this->AllocateVector();
         this->FillVectorRandom();
-        std::sort(std::execution::par, this->vec.begin(), this->vec.end());
+        std::sort(this->vec.begin(), this->vec.end());
     }
-
-    void TearDown(const benchmark::State& state) override { this->DeallocateVector(); }
 };
 
 template <typename T, long Size = -1, int From = -1, int To = -1, int Seed = 0>
 struct ReverseOrderVectorFixture : public RandomVectorFixture<T, Size, From, To, Seed> {
-    void SetUp(const benchmark::State& state) override {
+    void Prepare() {
         this->DeallocateVector();
         this->AllocateVector();
         this->FillVectorRandom();
-        std::sort(std::execution::par, this->vec.begin(), this->vec.end(), std::greater<T>());
+        std::sort(this->vec.begin(), this->vec.end(), std::greater<T>());
     }
-
-    void TearDown(const benchmark::State& state) override { this->DeallocateVector(); }
 };
 
 // Stringify macro
@@ -175,7 +171,13 @@ struct ReverseOrderVectorFixture : public RandomVectorFixture<T, Size, From, To,
                                 BM_std_sort_##dataType##_##type##_##bench, type, size, from, to) \
     (benchmark::State & state) {                                                                 \
         for (auto _ : state) {                                                                   \
+            state.PauseTiming();                                                                 \
+            Prepare();                                                                           \
+            state.ResumeTiming();                                                                \
             std::sort(vec.begin(), vec.end());                                                   \
+            state.PauseTiming();                                                                 \
+            Destroy();                                                                           \
+            state.ResumeTiming();                                                                \
         }                                                                                        \
     }                                                                                            \
     BENCHMARK_REGISTER_F(dataType##VectorFixture, BM_std_sort_##dataType##_##type##_##bench)     \
@@ -193,7 +195,13 @@ register_bench_small_sizes(std_sort);
                                 to)                                                              \
     (benchmark::State & state) {                                                                 \
         for (auto _ : state) {                                                                   \
+            state.PauseTiming();                                                                 \
+            Prepare();                                                                           \
+            state.ResumeTiming();                                                                \
             std::sort(std::execution::par, vec.begin(), vec.end());                              \
+            state.PauseTiming();                                                                 \
+            Destroy();                                                                           \
+            state.ResumeTiming();                                                                \
         }                                                                                        \
     }                                                                                            \
     BENCHMARK_REGISTER_F(dataType##VectorFixture, BM_par_std_sort_##dataType##_##type##_##bench) \
@@ -211,7 +219,13 @@ register_bench_small_sizes(std_parallel_sort);
                                 to)                                                              \
     (benchmark::State & state) {                                                                 \
         for (auto _ : state) {                                                                   \
+            state.PauseTiming();                                                                 \
+            Prepare();                                                                           \
+            state.ResumeTiming();                                                                \
             mpqsort::sort(mpqsort::execution::par_multi_way, vec.begin(), vec.end());            \
+            state.PauseTiming();                                                                 \
+            Destroy();                                                                           \
+            state.ResumeTiming();                                                                \
         }                                                                                        \
     }                                                                                            \
     BENCHMARK_REGISTER_F(dataType##VectorFixture, BM_mpqsort_sort_##dataType##_##type##_##bench) \
@@ -231,7 +245,13 @@ register_bench_small_values_range(mpqsort_sort);
                                 to)                                                             \
     (benchmark::State & state) {                                                                \
         for (auto _ : state) {                                                                  \
+            state.PauseTiming();                                                                \
+            Prepare();                                                                          \
+            state.ResumeTiming();                                                               \
             __gnu_parallel::sort(vec.begin(), vec.end(), __gnu_parallel::quicksort_tag());      \
+            state.PauseTiming();                                                                \
+            Destroy();                                                                          \
+            state.ResumeTiming();                                                               \
         }                                                                                       \
     }                                                                                           \
     BENCHMARK_REGISTER_F(dataType##VectorFixture, BM_gnu_qs_sort_##dataType##_##type##_##bench) \
@@ -250,8 +270,14 @@ register_bench_small_sizes(gnu_qs_sort);
                                 to)                                                              \
     (benchmark::State & state) {                                                                 \
         for (auto _ : state) {                                                                   \
+            state.PauseTiming();                                                                 \
+            Prepare();                                                                           \
+            state.ResumeTiming();                                                                \
             __gnu_parallel::sort(vec.begin(), vec.end(),                                         \
                                  __gnu_parallel::balanced_quicksort_tag());                      \
+            state.PauseTiming();                                                                 \
+            Destroy();                                                                           \
+            state.ResumeTiming();                                                                \
         }                                                                                        \
     }                                                                                            \
     BENCHMARK_REGISTER_F(dataType##VectorFixture, BM_gnu_bqs_sort_##dataType##_##type##_##bench) \
@@ -270,8 +296,14 @@ register_bench_small_sizes(gnu_bqs_sort);
                                 to)                                                               \
     (benchmark::State & state) {                                                                  \
         for (auto _ : state) {                                                                    \
+            state.PauseTiming();                                                                  \
+            Prepare();                                                                            \
+            state.ResumeTiming();                                                                 \
             __gnu_parallel::sort(vec.begin(), vec.end(),                                          \
                                  __gnu_parallel::multiway_mergesort_tag());                       \
+            state.PauseTiming();                                                                  \
+            Destroy();                                                                            \
+            state.ResumeTiming();                                                                 \
         }                                                                                         \
     }                                                                                             \
     BENCHMARK_REGISTER_F(dataType##VectorFixture, BM_gnu_mwms_sort_##dataType##_##type##_##bench) \
@@ -288,7 +320,13 @@ register_bench_small_sizes(gnu_mwms_sort);
                                 BM_tbb_sort_##dataType##_##type##_##bench, type, size, from, to) \
     (benchmark::State & state) {                                                                 \
         for (auto _ : state) {                                                                   \
+            state.PauseTiming();                                                                 \
+            Prepare();                                                                           \
+            state.ResumeTiming();                                                                \
             tbb::parallel_sort(vec.begin(), vec.end());                                          \
+            state.PauseTiming();                                                                 \
+            Destroy();                                                                           \
+            state.ResumeTiming();                                                                \
         }                                                                                        \
     }                                                                                            \
     BENCHMARK_REGISTER_F(dataType##VectorFixture, BM_tbb_sort_##dataType##_##type##_##bench)     \
@@ -306,7 +344,13 @@ register_bench_small_sizes(tbb_sort);
                                 from, to)                                                        \
     (benchmark::State & state) {                                                                 \
         for (auto _ : state) {                                                                   \
+            state.PauseTiming();                                                                 \
+            Prepare();                                                                           \
+            state.ResumeTiming();                                                                \
             thrust::sort(vec.begin(), vec.end());                                                \
+            state.PauseTiming();                                                                 \
+            Destroy();                                                                           \
+            state.ResumeTiming();                                                                \
         }                                                                                        \
     }                                                                                            \
     BENCHMARK_REGISTER_F(dataType##VectorFixture,                                                \
