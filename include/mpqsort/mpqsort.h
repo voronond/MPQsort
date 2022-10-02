@@ -121,6 +121,18 @@ namespace mpqsort::helpers {
 }  // namespace mpqsort::helpers
 
 /**
+ * @brief This namespace contains parameters for algorithm tuning
+ */
+namespace mpqsort::parameters {
+    /**
+     * @brief Cacheline of your system
+     * Threads process the array in blocks and those blocks are the multiple of cacheline size to
+     * prevent false sharing between threads. The value is in bytes.
+     */
+    const static size_t CACHELINE_SIZE = 64;
+}  // namespace mpqsort::parameters
+
+/**
  * @brief Implementation of multiway quicksort and multiway parallel quicksort
  */
 namespace mpqsort::impl {
