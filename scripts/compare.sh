@@ -9,14 +9,16 @@ then
     exit 1
 fi
 
+TOOLS_DIR=$HOME/.cache/CPM/benchmark/864e6ccb444b9a631c8b0950e9e6d1a05fb7abca/tools
+
 # Create vnevn if not exists
-if [[ ! -a build/venv && -d build/venv ]]
+if [[ ! -a build/venv ]]
 then
     python -m venv build/venv
     # Activate
     source build/venv/bin/activate
     # Install requirements
-    pip3 install -r build/_deps/benchmark-src/tools/requirements.txt
+    pip3 install -r ${TOOLS_DIR}/requirements.txt
     pip3 install pandas
 else
     # Activate
@@ -24,7 +26,7 @@ else
 fi
 
 # Run script
-python build/_deps/benchmark-src/tools/compare.py "$@"
+python ${TOOLS_DIR}/compare.py "$@"
 
 # Deactivate
 deactivate
