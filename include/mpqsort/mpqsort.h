@@ -137,12 +137,38 @@ namespace mpqsort::parameters {
  */
 namespace mpqsort::impl {
     // ----- Main implementation START -----
+    // OpenMP mergeable possible if shared variables (code gets executed as separate task or not)
+    // taskloop
+    // SEQ
+    template <typename NumPivot, typename RandomIt,
+              typename Compare = std::less<typename std::iterator_traits<RandomIt>::value_type>>
+    void _seq_multiway_partition(NumPivot pivot_num, RandomIt first, RandomIt last,
+                                 Compare comp = Compare()) {
+        // Use optimal swap method
+        using std::swap;
+        // TODO implement
+        UNUSED(pivot_num);
+        std::sort(first, last, comp);
+    }
+
     template <typename NumPivot, typename RandomIt,
               typename Compare = std::less<typename std::iterator_traits<RandomIt>::value_type>>
     void _seq_multiway_qsort(NumPivot pivot_num, RandomIt first, RandomIt last,
                              Compare comp = Compare()) {
         // TODO implement
         UNUSED(pivot_num);
+        std::sort(first, last, comp);
+    }
+
+    // PAR
+    template <typename NumPivot, typename Cores, typename RandomIt,
+              typename Compare = std::less<typename std::iterator_traits<RandomIt>::value_type>>
+    void _par_multiway_partition(NumPivot pivot_num, Cores cores, RandomIt first, RandomIt last,
+                                 Compare comp = Compare()) {
+        using std::swap;
+        // TODO implement
+        UNUSED(pivot_num);
+        UNUSED(cores);
         std::sort(first, last, comp);
     }
 

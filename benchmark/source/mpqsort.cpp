@@ -30,6 +30,10 @@ template <typename T, long Size = -1, int From = -1, int To = -1> struct VectorF
         this->vec.resize(Size == -1 ? this->VectorSizeToFillHalfMemory() : Size);
     }
 
+    virtual void Prepare() {
+        throw std::logic_error("Prepare function should be overriden in child class!");
+    }
+
     void DeallocateVector() { std::vector<T>().swap(this->vec); }
 
     void Destroy() { this->DeallocateVector(); }
@@ -121,6 +125,32 @@ struct ReverseOrderVectorFixture : public RandomVectorFixture<T, Size, From, To,
     }
 };
 
+template <typename T, long Size = -1, int From = -1, int To = -1, int Seed = 0>
+struct OrganpipeOrderVectorFixture : public RandomVectorFixture<T, Size, From, To, Seed> {
+    void Prepare() {
+        this->DeallocateVector();
+        this->AllocateVector();
+        this->FillVectorRandom();
+
+        auto end_middle = this->vec.size() / 2 + this->vec.size() & 1;
+
+        std::sort(this->vec.begin(), this->vec.begin() + end_middle);
+        std::sort(this->vec.begin() + end_middle, this->vec.end(), std::greater<T>());
+    }
+};
+
+template <typename T, long Size = -1, int From = -1, int To = -1, int Seed = 0>
+struct RotatedOrderVectorFixture : public RandomVectorFixture<T, Size, From, To> {
+    // 1, 2, ..., n - 1, 0
+    void Prepare() {
+        this->DeallocateVector();
+        this->AllocateVector();
+        this->FillVectorRandom();
+        std::sort(this->vec.begin(), this->vec.end());
+        std::rotate(this->vec.begin(), this->vec.begin() + 1, this->vec.end());
+    }
+};
+
 // Stringify macro
 #define str(X) #X
 
@@ -135,7 +165,13 @@ struct ReverseOrderVectorFixture : public RandomVectorFixture<T, Size, From, To,
     name(Sorted, bench, double, size, from, to);             \
     name(ReverseOrder, bench, int, size, from, to);          \
     name(ReverseOrder, bench, short, size, from, to);        \
-    name(ReverseOrder, bench, double, size, from, to);
+    name(ReverseOrder, bench, double, size, from, to);       \
+    name(OrganpipeOrder, bench, int, size, from, to);        \
+    name(OrganpipeOrder, bench, short, size, from, to);      \
+    name(OrganpipeOrder, bench, double, size, from, to);     \
+    name(RotatedOrder, bench, int, size, from, to);          \
+    name(RotatedOrder, bench, short, size, from, to);        \
+    name(RotatedOrder, bench, double, size, from, to);
 
 // Registers benchmarks with default values for different types (size, from, to stays default)
 #define default default
