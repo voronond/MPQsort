@@ -18,4 +18,7 @@ else
     build
 fi
 
+# Set deprecated OpenMP nested paralelism for GNU algoritms
+export OMP_NESTED=true
 ./build/benchmark/MPQsortBenchmarks --benchmark_time_unit=ms "$@"
+unset OMP_NESTED
