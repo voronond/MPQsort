@@ -111,7 +111,8 @@ struct SortedVectorFixture : public RandomVectorFixture<T, Size, From, To, Seed>
         this->DeallocateVector();
         this->AllocateVector();
         this->FillVectorRandom();
-        std::sort(this->vec.begin(), this->vec.end());
+        __gnu_parallel::sort(this->vec.begin(), this->vec.end(),
+                             __gnu_parallel::balanced_quicksort_tag());
     }
 };
 
@@ -121,7 +122,8 @@ struct ReverseOrderVectorFixture : public RandomVectorFixture<T, Size, From, To,
         this->DeallocateVector();
         this->AllocateVector();
         this->FillVectorRandom();
-        std::sort(this->vec.begin(), this->vec.end(), std::greater<T>());
+        __gnu_parallel::sort(this->vec.begin(), this->vec.end(), std::greater<T>(),
+                             __gnu_parallel::balanced_quicksort_tag());
     }
 };
 
@@ -134,8 +136,10 @@ struct OrganpipeOrderVectorFixture : public RandomVectorFixture<T, Size, From, T
 
         auto end_middle = this->vec.size() / 2 + this->vec.size() & 1;
 
-        std::sort(this->vec.begin(), this->vec.begin() + end_middle);
-        std::sort(this->vec.begin() + end_middle, this->vec.end(), std::greater<T>());
+        __gnu_parallel::sort(this->vec.begin(), this->vec.begin() + end_middle,
+                             __gnu_parallel::balanced_quicksort_tag());
+        __gnu_parallel::sort(this->vec.begin() + end_middle, this->vec.end(), std::greater<T>(),
+                             __gnu_parallel::balanced_quicksort_tag());
     }
 };
 
@@ -146,7 +150,8 @@ struct RotatedOrderVectorFixture : public RandomVectorFixture<T, Size, From, To>
         this->DeallocateVector();
         this->AllocateVector();
         this->FillVectorRandom();
-        std::sort(this->vec.begin(), this->vec.end());
+        __gnu_parallel::sort(this->vec.begin(), this->vec.end(),
+                             __gnu_parallel::balanced_quicksort_tag());
         std::rotate(this->vec.begin(), this->vec.begin() + 1, this->vec.end());
     }
 };
