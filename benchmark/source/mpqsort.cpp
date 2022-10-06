@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 
-// TODO remove when released
+// TODO: remove when released
 #define TESTING
 
 // Possible vector types

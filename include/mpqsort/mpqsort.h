@@ -6,9 +6,18 @@
 #include <iterator>
 #include <limits>
 #include <type_traits>
+#include <iostream>
 
-// TODO remove after all methods implemented
+// TODO: remove after all methods implemented
 #define UNUSED(x) (void)(x)
+// TODO: Remove when done
+//#define DEBUG
+
+#ifdef DEBUG
+# define PRINT_ITERS(it1, it2, msg) mpqsort::helpers::print(it1, it2, msg)
+#else
+# define PRINT_ITERS(it1, it2, msg)
+#endif
 
 /**
  * @brief Contains execution policy definitions for sort algorithms, helper functions and type
@@ -22,7 +31,7 @@ namespace mpqsort::execution {
     class parallel_policy_two_way {};
     class parallel_policy_multi_way {};
 
-    // TODO maybe add unseq if possible (standard and self defined)
+    // TODO: maybe add unseq if possible (standard and self defined)
     /**
      * @brief Sequenced execution policy from std
      */
@@ -118,6 +127,28 @@ namespace mpqsort::helpers {
     // Extension of is_same applying decay_t automatically
     template <typename T, typename U> inline constexpr bool _is_same_decay_v
         = std::is_same<std::decay_t<T>, std::decay_t<U>>::value;
+
+    template <typename RandomIt>
+    void print(RandomIt first, RandomIt last, const std::string name="") {
+        if (!name.empty())
+            std::cout << name << ": ";
+
+        std::cout << "{ ";
+
+        if (first >= last) {
+            std::cout << "}" << std::endl;
+            return;
+        }
+
+        std::cout << *first;
+        ++first;
+        while (first < last) {
+            std::cout << ", " << *first;
+            ++first;
+        }
+
+        std::cout << " }" << std::endl;
+    }
 }  // namespace mpqsort::helpers
 
 /**
@@ -146,7 +177,7 @@ namespace mpqsort::impl {
                                  Compare comp = Compare()) {
         // Use optimal swap method
         using std::swap;
-        // TODO implement
+        // TODO: implement
         UNUSED(pivot_num);
         std::sort(first, last, comp);
     }
@@ -155,33 +186,90 @@ namespace mpqsort::impl {
               typename Compare = std::less<typename std::iterator_traits<RandomIt>::value_type>>
     void _seq_multiway_qsort(NumPivot pivot_num, RandomIt first, RandomIt last,
                              Compare comp = Compare()) {
-        // TODO implement
+        // TODO: implement
         UNUSED(pivot_num);
         std::sort(first, last, comp);
     }
 
     // PAR
-    template <typename NumPivot, typename Cores, typename RandomIt,
-              typename Compare = std::less<typename std::iterator_traits<RandomIt>::value_type>>
-    void _par_multiway_partition(NumPivot pivot_num, Cores cores, RandomIt first, RandomIt last,
-                                 Compare comp = Compare()) {
-        using std::swap;
-        // TODO implement
+    template <typename NumPivot, typename RandomIt,
+              typename Compare>
+    auto _par_multiway_partition(NumPivot pivot_num, RandomIt first, RandomIt last, Compare comp) {
+        // TODO: when multiple pivots supported
         UNUSED(pivot_num);
-        UNUSED(cores);
-        std::sort(first, last, comp);
+
+        // Last element as pivot
+        auto pivot = *(last - 1); // Access last element value
+        // Indexes
+        auto i = first;
+        auto j = last - 1;
+
+        while (i < j) {
+            if (comp(*i, pivot) && !comp(*j, pivot)) {
+                ++i;
+                --j;
+            }
+            else if (!comp(*i, pivot) && comp(*j, pivot)) {
+                std::iter_swap(i, j);
+                ++i;
+                --j;
+            }
+            else if (!comp(*i, pivot) && !comp(*j, pivot)) {
+                --j;
+            }
+            else {
+                ++i;
+            }
+        }
+
+        if (comp(*j, pivot))
+            ++j;
+        std::iter_swap(j, last - 1);
+
+        return j;
     }
+
+    template <typename NumPivot, typename RandomIt,
+              typename Compare = std::less<typename std::iterator_traits<RandomIt>::value_type>>
+    void _par_multiway_qsort_inner(NumPivot pivot_num, RandomIt first, RandomIt last, Compare comp) {
+        // TODO: when multiple pivots supported
+        UNUSED(pivot_num);
+        while (first < last) {
+            #ifndef DEBUG
+            if ((last - first) <= 32) {
+                std::sort(first, last, comp);
+
+                return;
+            }
+            #endif
+
+            auto r = _par_multiway_partition(pivot_num, first, last, comp);
+            PRINT_ITERS(first, last, "After partitioning");
+            #pragma omp task
+            _par_multiway_qsort_inner(pivot_num, first, r, comp);
+            first = r + 1;
+        }
+    }
+
+    // ----- Main implementation END -----
 
     template <typename NumPivot, typename Cores, typename RandomIt,
               typename Compare = std::less<typename std::iterator_traits<RandomIt>::value_type>>
     void _par_multiway_qsort(NumPivot pivot_num, Cores cores, RandomIt first, RandomIt last,
                              Compare comp = Compare()) {
-        // TODO implement
+        PRINT_ITERS(first, last, "START");
         UNUSED(pivot_num);
         UNUSED(cores);
-        std::sort(first, last, comp);
+        // Set OpenMP parameters
+        omp_set_max_active_levels(std::numeric_limits<int>::max()); // Allow nested parallelism
+#pragma omp parallel default(shared) firstprivate(pivot_num, first, last, comp) num_threads(cores)
+        {
+#pragma omp single
+            // TODO: change when multiple pivots supported!!!
+            _par_multiway_qsort_inner(1, first, last, comp);
+        }
+        PRINT_ITERS(first, last, "END");
     }
-    // ----- Main implementation END -----
 
     // Wrapper for different arguments
     template <typename NumPivot, typename RandomIt,
@@ -189,7 +277,9 @@ namespace mpqsort::impl {
     void _par_multiway_qsort(NumPivot pivot_num, RandomIt first, RandomIt last,
                              Compare comp = Compare()) {
         // Use all available cores on a machine
-        _par_multiway_qsort(pivot_num, omp_get_num_procs(), first, last, comp);
+        // TODO: Change when multiple pivots supported!!!
+        UNUSED(pivot_num);
+        _par_multiway_qsort(1, omp_get_num_procs(), first, last, comp);
     }
 
     // Call sort based on policy type

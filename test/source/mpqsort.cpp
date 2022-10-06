@@ -179,6 +179,84 @@ TEMPLATE_LIST_TEST_CASE("Instantiation of a sort overloads with policy", TAG.SOR
 }
 
 // Test correctness of implementations
+TEMPLATE_LIST_TEST_CASE("Increasing vector sizes", TAG.SORT_ALL, ALLOWED_EXECUTION_POLICIES) {
+    auto test_vector = std::vector<int>();
+    auto test_vector_res = test_vector;
+
+    SECTION("Size 0") {
+        test_vector.resize(0);
+        test_vector_res = test_vector;
+    }
+
+    SECTION("Size 1") {
+        test_vector.resize(1);
+        test_vector = {9};
+        test_vector_res = test_vector;
+    }
+
+    SECTION("Size 2") {
+        test_vector.resize(2);
+        test_vector = {9, 8};
+        test_vector_res = test_vector;
+    }
+
+    SECTION("Size 3") {
+        test_vector.resize(3);
+        test_vector = {9, 8, 7};
+        test_vector_res = test_vector;
+    }
+
+    SECTION("Size 4") {
+        test_vector.resize(4);
+        test_vector = {9, 8, 7, 6};
+        test_vector_res = test_vector;
+    }
+
+    SECTION("Size 5") {
+        test_vector.resize(5);
+        test_vector = {9, 8, 7, 6, 5};
+        test_vector_res = test_vector;
+    }
+
+    SECTION("Size 6") {
+        test_vector.resize(6);
+        test_vector = {9, 8, 7, 6, 5, 4};
+        test_vector_res = test_vector;
+    }
+
+    SECTION("Size 7") {
+        test_vector.resize(7);
+        test_vector = {9, 8, 7, 6, 5, 4, 3};
+        test_vector_res = test_vector;
+    }
+
+    SECTION("Size 8") {
+        test_vector.resize(8);
+        test_vector = {9, 8, 7, 6, 5, 4, 3, 2};
+        test_vector_res = test_vector;
+    }
+
+    SECTION("Size 9") {
+        test_vector.resize(9);
+        test_vector = {9, 8, 7, 6, 5, 4, 3, 2, 1};
+        test_vector_res = test_vector;
+    }
+
+    SECTION("Size 10") {
+        test_vector.resize(10);
+        test_vector = {9, 8, 7, 6, 5, 4, 3, 2, 1, 0};
+        test_vector_res = test_vector;
+    }
+
+    // Sort array
+    mpqsort::sort(TestType{}, test_vector.begin(), test_vector.end());
+    // Compute correct result
+    std::sort(test_vector_res.begin(), test_vector_res.end());
+
+    REQUIRE_THAT(test_vector, Catch::Equals(test_vector_res));
+}
+
+// Test correctness of implementations
 TEMPLATE_LIST_TEST_CASE("Sort already sorted vector", TAG.SORT_ALL, ALLOWED_EXECUTION_POLICIES) {
     // Length 1..10
     auto vector_length = GENERATE(range(1, 11));
@@ -269,6 +347,7 @@ TEMPLATE_LIST_TEST_CASE("Sort custom type with defined comparator", TAG.SORT_ALL
         REQUIRE_THAT(test_vector, Catch::Equals(test_vector_res));
     }
 }
+
 // Random data, random lengths. Final test trying to catch missed bugs
 TEMPLATE_LIST_TEST_CASE(
     "Sort vectors, different sizes and random numbers. Last chance to catch errors.", TAG.SORT_ALL,

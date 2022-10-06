@@ -25,4 +25,5 @@ fi
 
 cmake -S test -B build/test -DENABLE_COMPILER_WARNINGS=ON
 cmake --build build/test -j`nproc`
-./build/test/MPQsortTests --use-colour yes "$@"
+# Break at first fail
+./build/test/MPQsortTests -a --use-colour yes "$@"
