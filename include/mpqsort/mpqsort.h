@@ -191,58 +191,57 @@ namespace mpqsort::impl {
     }
 
     // PAR
-    template <typename NumPivot, typename RandomIt, typename Compare>
-    auto _par_multiway_partition(NumPivot pivot_num, RandomIt first, RandomIt last, Compare comp) {
+    template <typename NumPivot, typename RandomBaseIt, typename Compare>
+    auto _par_multiway_partition(NumPivot pivot_num, RandomBaseIt base, long lp, long rp,
+                                 Compare comp) {
         // TODO: when multiple pivots supported
         UNUSED(pivot_num);
+        using std::swap;
 
         // Last element as pivot
-        auto pivot = *(last - 1);  // Access last element value
+        auto pivot = base[rp];  // Access last element value
         // Indexes
-        auto i = first;
-        auto j = last - 1;
+        auto i = lp;
+        auto j = rp - 1;
 
         while (i < j) {
-            if (comp(*i, pivot) && !comp(*j, pivot)) {
+            if (!comp(base[i], pivot) && comp(base[j], pivot)) {
+                std::swap(base[i], base[j]);
                 ++i;
-                --j;
-            } else if (!comp(*i, pivot) && comp(*j, pivot)) {
-                std::iter_swap(i, j);
-                ++i;
-                --j;
-            } else if (!comp(*i, pivot) && !comp(*j, pivot)) {
                 --j;
             } else {
-                ++i;
+                if (comp(base[i], pivot)) i++;
+                if (!comp(base[j], pivot)) j--;
             }
         }
 
-        if (comp(*j, pivot)) ++j;
-        std::iter_swap(j, last - 1);
+        if (comp(base[j], pivot)) ++j;
+        std::swap(base[j], base[rp]);
 
         return j;
     }
 
-    template <typename NumPivot, typename RandomIt,
-              typename Compare = std::less<typename std::iterator_traits<RandomIt>::value_type>>
-    void _par_multiway_qsort_inner(NumPivot pivot_num, RandomIt first, RandomIt last,
+    template <typename NumPivot, typename RandomBaseIt, typename Compare>
+    void _par_multiway_qsort_inner(NumPivot pivot_num, RandomBaseIt base, long lp, long rp,
                                    Compare comp) {
         // TODO: when multiple pivots supported
         UNUSED(pivot_num);
-        while (first < last) {
+        while (lp < rp) {
 #ifndef DEBUG
-            if ((last - first) <= 32) {
-                std::sort(first, last, comp);
+/*
+            if ((rp - lp) <= 32) {
+                std::sort(base + lp, base + rp, comp);
 
                 return;
             }
+            */
 #endif
 
-            auto r = _par_multiway_partition(pivot_num, first, last, comp);
+            auto r = _par_multiway_partition(pivot_num, base, lp, rp, comp);
             PRINT_ITERS(first, last, "After partitioning");
 #pragma omp task
-            _par_multiway_qsort_inner(pivot_num, first, r, comp);
-            first = r + 1;
+            _par_multiway_qsort_inner(pivot_num, base, lp, r - 1, comp);
+            lp = r + 1;
         }
     }
 
@@ -252,17 +251,20 @@ namespace mpqsort::impl {
               typename Compare = std::less<typename std::iterator_traits<RandomIt>::value_type>>
     void _par_multiway_qsort(NumPivot pivot_num, Cores cores, RandomIt first, RandomIt last,
                              Compare comp = Compare()) {
+        if (last - first <= 1) return;
+
         PRINT_ITERS(first, last, "START");
         UNUSED(pivot_num);
         UNUSED(cores);
 
         // Set OpenMP parameters
         omp_set_max_active_levels(std::numeric_limits<int>::max());  // Allow nested parallelism
-#pragma omp parallel default(shared) firstprivate(pivot_num, first, last, comp) num_threads(cores)
+#pragma omp parallel firstprivate(pivot_num, first, last, comp) num_threads(cores)
         {
 #pragma omp single
             // TODO: change when multiple pivots supported!!!
-            _par_multiway_qsort_inner(1, first, last, comp);
+            // Convert iterators for more general format
+            _par_multiway_qsort_inner(1, first, 0, last - first - 1, comp);
         }
         PRINT_ITERS(first, last, "END");
     }
