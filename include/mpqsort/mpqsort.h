@@ -242,17 +242,15 @@ namespace mpqsort::impl {
     template <typename NumPivot, typename RandomBaseIt, typename Compare>
     void _seq_multiway_qsort_inner(NumPivot pivot_num, RandomBaseIt base, long lp, long rp,
                                    Compare& comp) {
-        //if (lp < rp)
-        if (lp >= rp)
-            return;
+        while (lp < rp) {
+            auto [index_p1, index_p2] = _seq_multiway_partition(pivot_num, base, lp, rp, comp);
 
-        auto [index_p1, index_p2] = _seq_multiway_partition(pivot_num, base, lp, rp, comp);
+            PRINT_ITERS(base, lp, rp, "After partitioning seq multiway");
 
-        PRINT_ITERS(base, lp, rp, "After partitioning seq multiway");
-
-        _seq_multiway_qsort_inner(pivot_num, base, lp, index_p1 - 1, comp);
-        _seq_multiway_qsort_inner(pivot_num, base, index_p1, index_p2, comp);
-        _seq_multiway_qsort_inner(pivot_num, base, index_p2 + 1, rp, comp);
+            _seq_multiway_qsort_inner(pivot_num, base, lp, index_p1 - 1, comp);
+            _seq_multiway_qsort_inner(pivot_num, base, index_p1, index_p2, comp);
+            lp = index_p2 + 1;
+        }
     }
 
     template <typename NumPivot, typename RandomIt,

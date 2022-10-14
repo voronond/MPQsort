@@ -310,7 +310,8 @@ TEMPLATE_LIST_TEST_CASE("Sort vector provided in reversed order", TAG.SORT_ALL,
     REQUIRE_THAT(test_vector, Catch::Equals(test_vector_res));
 }
 
-/*
+// Do not test when DEBUG mode activated, because it prints logging and _test_struct does not have operator << overloaded
+#ifndef DEBUG
 TEMPLATE_LIST_TEST_CASE("Sort custom type with defined comparator", TAG.SORT_ALL,
                         ALLOWED_EXECUTION_POLICIES) {
     // Declare custom type and comparators
@@ -366,7 +367,7 @@ TEMPLATE_LIST_TEST_CASE("Sort custom type with defined comparator", TAG.SORT_ALL
         REQUIRE_THAT(test_vector, Catch::Equals(test_vector_res));
     }
 }
-*/
+#endif
 
 TEST_CASE("Specific problematic input", TAG.SORT_ALL) {
     auto test_vector = std::vector<int>{6, 6, 7, 6, 5, 2, 2};
