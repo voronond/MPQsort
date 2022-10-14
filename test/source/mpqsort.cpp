@@ -189,8 +189,8 @@ TEST_CASE("Parallel 2 threads block size 2 length") {
     auto test_vector = std::vector<int>{15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0};
     auto test_vector_res = test_vector;
 
-    mpqsort::sort(mpqsort::execution::par_two_way, 2, test_vector.begin(), test_vector.end(), std::less<int>());
-    std::sort(test_vector_res.begin(), test_vector_res.end());
+    mpqsort::sort(mpqsort::execution::par_two_way, 2, test_vector.begin(), test_vector.end(),
+std::less<int>()); std::sort(test_vector_res.begin(), test_vector_res.end());
 
     REQUIRE_THAT(test_vector, Catch::Equals(test_vector_res));
 }
@@ -310,7 +310,8 @@ TEMPLATE_LIST_TEST_CASE("Sort vector provided in reversed order", TAG.SORT_ALL,
     REQUIRE_THAT(test_vector, Catch::Equals(test_vector_res));
 }
 
-// Do not test when DEBUG mode activated, because it prints logging and _test_struct does not have operator << overloaded
+// Do not test when DEBUG mode activated, because it prints logging and _test_struct does not have
+// operator << overloaded
 #ifndef DEBUG
 TEMPLATE_LIST_TEST_CASE("Sort custom type with defined comparator", TAG.SORT_ALL,
                         ALLOWED_EXECUTION_POLICIES) {
@@ -379,9 +380,8 @@ TEST_CASE("Specific problematic input", TAG.SORT_ALL) {
     REQUIRE_THAT(test_vector, Catch::Equals(test_vector_res));
 }
 
-TEMPLATE_LIST_TEST_CASE(
-    "Sort vectors, small and different sizes and random numbers.", TAG.SORT_ALL,
-    ALLOWED_EXECUTION_POLICIES) {
+TEMPLATE_LIST_TEST_CASE("Sort vectors, small and different sizes and random numbers.", TAG.SORT_ALL,
+                        ALLOWED_EXECUTION_POLICIES) {
     // Random length from 100 to 10000
     auto vector_length = GENERATE(take(100, random(0, 10)));
     // Generate vector with random numbers

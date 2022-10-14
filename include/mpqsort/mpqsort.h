@@ -6,8 +6,8 @@
 #include <iostream>
 #include <iterator>
 #include <limits>
-#include <type_traits>
 #include <random>
+#include <type_traits>
 
 // TODO: remove after all methods implemented
 #define UNUSED(x) (void)(x)
@@ -173,17 +173,18 @@ namespace mpqsort::impl {
     // SEQ
 
     template <typename NumPivot, typename RandomBaseIt, typename Compare>
-    inline auto _get_pivot_indexes(NumPivot pivot_num, RandomBaseIt base, size_t lp, size_t rp, Compare& comp) {
+    inline auto _get_pivot_indexes(NumPivot pivot_num, RandomBaseIt base, size_t lp, size_t rp,
+                                   Compare& comp) {
         // TODO: Implement better strategy for choosing the pivot
         static std::mt19937 en(0);
         // Numbers <lp, rp>
         std::uniform_int_distribution<size_t> dist(lp, rp);
 
         std::vector<size_t> indexes(pivot_num);
-        for (NumPivot i = 0; i < pivot_num; ++i)
-            indexes.emplace_back(dist(en));
+        for (NumPivot i = 0; i < pivot_num; ++i) indexes.emplace_back(dist(en));
 
-        std::sort(indexes.begin(), indexes.end(), [&](size_t a, size_t b){return comp(base[a], base[b]); });
+        std::sort(indexes.begin(), indexes.end(),
+                  [&](size_t a, size_t b) { return comp(base[a], base[b]); });
 
         return indexes;
     }
@@ -204,8 +205,7 @@ namespace mpqsort::impl {
         UNUSED(pivot_num);
 
         // Swap pivots if they are not at the right position
-        if (!comp(base[lp], base[rp]))
-            swap(base[lp], base[rp]);
+        if (!comp(base[lp], base[rp])) swap(base[lp], base[rp]);
 
         // Get pivots
         auto p1 = base[lp], p2 = base[rp];
@@ -217,16 +217,15 @@ namespace mpqsort::impl {
             if (comp(base[k], p1)) {
                 swap(base[k2], base[k]);
                 k2++;
-            }
-            else {
+            } else {
                 if (!comp(base[k], p2)) {
-                    while (k < g && comp(p2, base[g])) // Not the same comparison! Should be k <= g?
+                    while (k < g
+                           && comp(p2, base[g]))  // Not the same comparison! Should be k <= g?
                         g--;
 
                     if (!comp(base[g], p1)) {
                         swap(base[k], base[g]);
-                    }
-                    else {
+                    } else {
                         _cyclic_shift_left(base, k, k2, g);
                         k2++;
                     }
