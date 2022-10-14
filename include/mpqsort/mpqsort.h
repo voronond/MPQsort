@@ -7,16 +7,17 @@
 #include <iterator>
 #include <limits>
 #include <type_traits>
+#include <random>
 
 // TODO: remove after all methods implemented
 #define UNUSED(x) (void)(x)
 // TODO: Remove when done
-//#define DEBUG
+#define DEBUG
 
 #ifdef DEBUG
-#    define PRINT_ITERS(it1, it2, msg) mpqsort::helpers::print(it1, it2, msg)
+#    define PRINT_ITERS(base, lp, rp, msg) mpqsort::helpers::print(base, lp, rp, msg)
 #else
-#    define PRINT_ITERS(it1, it2, msg)
+#    define PRINT_ITERS(base, lp, rp, msg)
 #endif
 
 /**
@@ -128,22 +129,22 @@ namespace mpqsort::helpers {
     template <typename T, typename U> inline constexpr bool _is_same_decay_v
         = std::is_same<std::decay_t<T>, std::decay_t<U>>::value;
 
-    template <typename RandomIt>
-    void print(RandomIt first, RandomIt last, const std::string name = "") {
+    template <typename RandomBaseIt>
+    void print(RandomBaseIt base, size_t lp, size_t rp, const std::string name = "") {
         if (!name.empty()) std::cout << name << ": ";
 
         std::cout << "{ ";
 
-        if (first >= last) {
+        if (lp > rp) {
             std::cout << "}" << std::endl;
             return;
         }
 
-        std::cout << *first;
-        ++first;
-        while (first < last) {
-            std::cout << ", " << *first;
-            ++first;
+        std::cout << base[lp];
+        ++lp;
+        while (lp <= rp) {
+            std::cout << ", " << base[lp];
+            ++lp;
         }
 
         std::cout << " }" << std::endl;
@@ -159,7 +160,8 @@ namespace mpqsort::parameters {
      * Threads process the array in blocks and those blocks are the multiple of cacheline size to
      * prevent false sharing between threads. The value is in bytes.
      */
-    const static size_t CACHELINE_SIZE = 64;
+    // static size_t CACHELINE_SIZE = 64;
+    static size_t SEQ_THRESHOLD = 1 << 17;  // based on benchmarks
 }  // namespace mpqsort::parameters
 
 /**
@@ -168,7 +170,6 @@ namespace mpqsort::parameters {
 namespace mpqsort::impl {
     // ----- Main implementation START -----
     // OpenMP mergeable possible if shared variables (code gets executed as separate task or not)
-    // taskloop
     // SEQ
     template <typename NumPivot, typename RandomIt,
               typename Compare = std::less<typename std::iterator_traits<RandomIt>::value_type>>
@@ -192,8 +193,8 @@ namespace mpqsort::impl {
 
     // PAR
     template <typename NumPivot, typename RandomBaseIt, typename Compare>
-    auto _par_multiway_partition(NumPivot pivot_num, RandomBaseIt base, long lp, long rp,
-                                 Compare comp) {
+    auto _par_multiway_partition(NumPivot pivot_num, RandomBaseIt base, size_t lp, size_t rp,
+                                 Compare& comp) {
         // TODO: when multiple pivots supported
         UNUSED(pivot_num);
         using std::swap;
@@ -222,25 +223,23 @@ namespace mpqsort::impl {
     }
 
     template <typename NumPivot, typename RandomBaseIt, typename Compare>
-    void _par_multiway_qsort_inner(NumPivot pivot_num, RandomBaseIt base, long lp, long rp,
-                                   Compare comp) {
+    void _par_multiway_qsort_inner(NumPivot pivot_num, RandomBaseIt base, size_t lp, size_t rp,
+                                   Compare& comp) {
         // TODO: when multiple pivots supported
         UNUSED(pivot_num);
         while (lp < rp) {
-#ifndef DEBUG
-/*
-            if ((rp - lp) <= 32) {
-                std::sort(base + lp, base + rp, comp);
-
+            if ((rp - lp) <= parameters::SEQ_THRESHOLD) {
+                std::sort(base + lp, base + rp + 1, comp);
                 return;
             }
-            */
-#endif
 
-            auto r = _par_multiway_partition(pivot_num, base, lp, rp, comp);
-            PRINT_ITERS(first, last, "After partitioning");
+            size_t r = _par_multiway_partition(pivot_num, base, lp, rp, comp);
+            PRINT_ITERS(base, lp, rp, "After partitioning");
+            // Sort if more that 1 elements
+            if ((r - lp) > 1) {
 #pragma omp task
-            _par_multiway_qsort_inner(pivot_num, base, lp, r - 1, comp);
+                _par_multiway_qsort_inner(pivot_num, base, lp, r - 1, comp);
+            }
             lp = r + 1;
         }
     }
@@ -253,7 +252,7 @@ namespace mpqsort::impl {
                              Compare comp = Compare()) {
         if (last - first <= 1) return;
 
-        PRINT_ITERS(first, last, "START");
+        PRINT_ITERS(first, 0, last - first - 1, "START");
         UNUSED(pivot_num);
         UNUSED(cores);
 
@@ -266,7 +265,7 @@ namespace mpqsort::impl {
             // Convert iterators for more general format
             _par_multiway_qsort_inner(1, first, 0, last - first - 1, comp);
         }
-        PRINT_ITERS(first, last, "END");
+        PRINT_ITERS(first, 0, last - first - 1, "END");
     }
 
     // Wrapper for different arguments

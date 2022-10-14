@@ -53,6 +53,12 @@ using SEQUENTIAL_EXECUTION_POLICIES
 using DISALLOWED_EXECUTION_POLICIES
     = std::tuple<int, bool, char, float, std::string, decltype(std::execution::par_unseq)>;
 
+// Setup
+
+TEST_CASE("Not a test case, just setup!") {
+    // Turn off optimization for small arrays
+    mpqsort::parameters::SEQ_THRESHOLD = 0;
+}
 // TEST CASES
 
 TEST_CASE("Sort version") {

@@ -44,8 +44,8 @@ template <typename T, long Size = -1, int From = -1, int To = -1> struct VectorF
     // Calculate how many elements to generate to fill half of the system memory
     auto VectorSizeToFillHalfMemory() const {
 #ifdef TESTING
-        // return 1000000;
-        return 8 * 1024 * 1024 * (1024 / sizeof(double));
+        return 100000000;
+        // return 8 * 1024 * 1024 * (1024 / sizeof(double));
 #else
         auto pages = sysconf(_SC_PHYS_PAGES);
         auto page_size = sysconf(_SC_PAGE_SIZE);
@@ -209,6 +209,17 @@ struct RotatedOrderVectorFixture : public RandomVectorFixture<T, Size, From, To>
     register_bench_int_random(name, small_sizes##_##50000000, 50000000, -1, -1); \
     register_bench_int_random(name, small_sizes##_##100000000, 100000000, -1, -1);
 
+// Helps to find out threshold when to switch to sequential algorithm
+#define small_sizes_threshold small_size_threshold
+#define register_bench_small_size_threshold(name)                                     \
+    register_bench_int_random(name, small_size_threshold##_##50000, 50000, -1, -1);   \
+    register_bench_int_random(name, small_size_threshold##_##100000, 100000, -1, -1); \
+    register_bench_int_random(name, small_size_threshold##_##200000, 200000, -1, -1); \
+    register_bench_int_random(name, small_size_threshold##_##300000, 300000, -1, -1); \
+    register_bench_int_random(name, small_size_threshold##_##400000, 400000, -1, -1); \
+    register_bench_int_random(name, small_size_threshold##_##500000, 500000, -1, -1); \
+    register_bench_int_random(name, small_size_threshold##_##1000000, 1000000, -1, -1);
+
 // Run std sort benchmarks
 #define std_sort(dataType, bench, type, size, from, to)                                          \
     BENCHMARK_TEMPLATE_DEFINE_F(dataType##VectorFixture,                                         \
@@ -233,6 +244,7 @@ register_bench_default(std_sort);
 register_bench_small_sizes(std_sort);
 
 // Run std parallel sort benchmarks
+// STL implementation is broken as it allocates all memory!!!!
 /*
 #define std_parallel_sort(dataType, bench, type, size, from, to)                                 \
     BENCHMARK_TEMPLATE_DEFINE_F(dataType##VectorFixture,                                         \
@@ -407,3 +419,6 @@ register_bench_small_sizes(tbb_sort);
 
 register_bench_default(nvidia_thrust_sort);
 register_bench_small_sizes(nvidia_thrust_sort);
+
+register_bench_small_size_threshold(std_sort);
+register_bench_small_size_threshold(mpqsort_sort)
