@@ -184,6 +184,18 @@ TEMPLATE_LIST_TEST_CASE("Instantiation of a sort overloads with policy", TAG.SOR
     REQUIRE_THAT(test_vector, Catch::Equals(test_vector_res));
 }
 
+/*
+TEST_CASE("Parallel 2 threads block size 2 length") {
+    auto test_vector = std::vector<int>{15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0};
+    auto test_vector_res = test_vector;
+
+    mpqsort::sort(mpqsort::execution::par_two_way, 2, test_vector.begin(), test_vector.end(), std::less<int>());
+    std::sort(test_vector_res.begin(), test_vector_res.end());
+
+    REQUIRE_THAT(test_vector, Catch::Equals(test_vector_res));
+}
+*/
+
 // Test correctness of implementations
 TEMPLATE_LIST_TEST_CASE("Increasing vector sizes", TAG.SORT_ALL, ALLOWED_EXECUTION_POLICIES) {
     auto test_vector = std::vector<int>();
@@ -298,6 +310,7 @@ TEMPLATE_LIST_TEST_CASE("Sort vector provided in reversed order", TAG.SORT_ALL,
     REQUIRE_THAT(test_vector, Catch::Equals(test_vector_res));
 }
 
+/*
 TEMPLATE_LIST_TEST_CASE("Sort custom type with defined comparator", TAG.SORT_ALL,
                         ALLOWED_EXECUTION_POLICIES) {
     // Declare custom type and comparators
@@ -341,17 +354,47 @@ TEMPLATE_LIST_TEST_CASE("Sort custom type with defined comparator", TAG.SORT_ALL
 
     SECTION("Use lambda comparator") {
         std::sort(test_vector_res.begin(), test_vector_res.end(), lambda_comparator);
-        mpqsort::sort(test_vector.begin(), test_vector.end(), lambda_comparator);
+        mpqsort::sort(TestType{}, test_vector.begin(), test_vector.end(), lambda_comparator);
 
         REQUIRE_THAT(test_vector, Catch::Equals(test_vector_res));
     }
 
     SECTION("Use functor comparator") {
         std::sort(test_vector_res.begin(), test_vector_res.end(), functor_comparator());
-        mpqsort::sort(test_vector.begin(), test_vector.end(), functor_comparator());
+        mpqsort::sort(TestType{}, test_vector.begin(), test_vector.end(), functor_comparator());
 
         REQUIRE_THAT(test_vector, Catch::Equals(test_vector_res));
     }
+}
+*/
+
+TEST_CASE("Specific problematic input", TAG.SORT_ALL) {
+    auto test_vector = std::vector<int>{6, 6, 7, 6, 5, 2, 2};
+    auto test_vector_res = test_vector;
+
+    mpqsort::sort(mpqsort::execution::seq_two_way, test_vector.begin(), test_vector.end());
+    std::sort(test_vector_res.begin(), test_vector_res.end());
+
+    REQUIRE_THAT(test_vector, Catch::Equals(test_vector_res));
+}
+
+TEMPLATE_LIST_TEST_CASE(
+    "Sort vectors, small and different sizes and random numbers.", TAG.SORT_ALL,
+    ALLOWED_EXECUTION_POLICIES) {
+    // Random length from 100 to 10000
+    auto vector_length = GENERATE(take(100, random(0, 10)));
+    // Generate vector with random numbers
+    auto test_vector = GENERATE(chunk(10000, take(10000, random(0, 10))));
+    test_vector.resize(vector_length);
+    // Compute expected result
+    auto test_vector_res = test_vector;
+    std::sort(test_vector_res.begin(), test_vector_res.end());
+
+    CAPTURE(vector_length, test_vector, Catch::rngSeed());
+
+    mpqsort::sort(TestType{}, test_vector.begin(), test_vector.end());
+
+    REQUIRE_THAT(test_vector, Catch::Equals(test_vector_res));
 }
 
 // Random data, random lengths. Final test trying to catch missed bugs
@@ -359,7 +402,7 @@ TEMPLATE_LIST_TEST_CASE(
     "Sort vectors, different sizes and random numbers. Last chance to catch errors.", TAG.SORT_ALL,
     ALLOWED_EXECUTION_POLICIES) {
     // Random length from 100 to 10000
-    auto vector_length = GENERATE(take(100, random(100, 10000)));
+    auto vector_length = GENERATE(take(100, random(100, 1000)));
     // Generate vector with random numbers
     auto test_vector = GENERATE(chunk(10000, take(10000, random(0, 1000000))));
     test_vector.resize(vector_length);

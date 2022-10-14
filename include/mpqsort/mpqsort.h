@@ -12,7 +12,7 @@
 // TODO: remove after all methods implemented
 #define UNUSED(x) (void)(x)
 // TODO: Remove when done
-#define DEBUG
+//#define DEBUG
 
 #ifdef DEBUG
 #    define PRINT_ITERS(base, lp, rp, msg) mpqsort::helpers::print(base, lp, rp, msg)
@@ -171,24 +171,100 @@ namespace mpqsort::impl {
     // ----- Main implementation START -----
     // OpenMP mergeable possible if shared variables (code gets executed as separate task or not)
     // SEQ
-    template <typename NumPivot, typename RandomIt,
-              typename Compare = std::less<typename std::iterator_traits<RandomIt>::value_type>>
-    void _seq_multiway_partition(NumPivot pivot_num, RandomIt first, RandomIt last,
-                                 Compare comp = Compare()) {
+
+    template <typename NumPivot, typename RandomBaseIt, typename Compare>
+    inline auto _get_pivot_indexes(NumPivot pivot_num, RandomBaseIt base, size_t lp, size_t rp, Compare& comp) {
+        // TODO: Implement better strategy for choosing the pivot
+        static std::mt19937 en(0);
+        // Numbers <lp, rp>
+        std::uniform_int_distribution<size_t> dist(lp, rp);
+
+        std::vector<size_t> indexes(pivot_num);
+        for (NumPivot i = 0; i < pivot_num; ++i)
+            indexes.emplace_back(dist(en));
+
+        std::sort(indexes.begin(), indexes.end(), [&](size_t a, size_t b){return comp(base[a], base[b]); });
+
+        return indexes;
+    }
+
+    template <typename RandomBaseIt, typename Index>
+    inline void _cyclic_shift_left(RandomBaseIt base, Index first, Index second, Index third) {
+        auto tmp = base[first];
+        base[first] = base[second];
+        base[second] = base[third];
+        base[third] = tmp;
+    }
+
+    template <typename NumPivot, typename RandomBaseIt, typename Compare>
+    auto _seq_multiway_partition(NumPivot pivot_num, RandomBaseIt base, size_t lp, size_t rp,
+                                 Compare& comp) {
         // Use optimal swap method
         using std::swap;
-        // TODO: implement
         UNUSED(pivot_num);
-        std::sort(first, last, comp);
+
+        // Swap pivots if they are not at the right position
+        if (!comp(base[lp], base[rp]))
+            swap(base[lp], base[rp]);
+
+        // Get pivots
+        auto p1 = base[lp], p2 = base[rp];
+
+        // Set boundaries
+        auto k2 = lp, k = k2, g = rp;
+
+        while (k <= g) {
+            if (comp(base[k], p1)) {
+                swap(base[k2], base[k]);
+                k2++;
+            }
+            else {
+                if (!comp(base[k], p2)) {
+                    while (k < g && comp(p2, base[g])) // Not the same comparison! Should be k <= g?
+                        g--;
+
+                    if (!comp(base[g], p1)) {
+                        swap(base[k], base[g]);
+                    }
+                    else {
+                        _cyclic_shift_left(base, k, k2, g);
+                        k2++;
+                    }
+                    g--;
+                }
+            }
+            k++;
+        }
+
+        return std::tuple{k2 == 0 ? 0 : k2 - 1, g == rp ? g : g + 1};
+    }
+
+    template <typename NumPivot, typename RandomBaseIt, typename Compare>
+    void _seq_multiway_qsort_inner(NumPivot pivot_num, RandomBaseIt base, size_t lp, size_t rp,
+                                   Compare& comp) {
+        if (lp < rp)
+        {
+            auto [index_p1, index_p2] = _seq_multiway_partition(pivot_num, base, lp, rp, comp);
+            PRINT_ITERS(base, lp, rp, "After partitioning seq multiway");
+            if (index_p1 != 0)
+                _seq_multiway_qsort_inner(pivot_num, base, lp, index_p1 - 1, comp);
+            if (index_p2 != 0)
+                _seq_multiway_qsort_inner(pivot_num, base, index_p1, index_p2 - 1, comp);
+            _seq_multiway_qsort_inner(pivot_num, base, index_p2, rp, comp);
+        }
     }
 
     template <typename NumPivot, typename RandomIt,
               typename Compare = std::less<typename std::iterator_traits<RandomIt>::value_type>>
     void _seq_multiway_qsort(NumPivot pivot_num, RandomIt first, RandomIt last,
                              Compare comp = Compare()) {
-        // TODO: implement
-        UNUSED(pivot_num);
-        std::sort(first, last, comp);
+        if (last - first <= 1) return;
+
+        PRINT_ITERS(first, 0, last - first - 1, "START");
+
+        _seq_multiway_qsort_inner(pivot_num, first, 0, last - first - 1, comp);
+
+        PRINT_ITERS(first, 0, last - first - 1, "END");
     }
 
     // PAR
@@ -329,7 +405,7 @@ namespace mpqsort {
      * @param last Last element of a container
      */
     template <typename RandomIt> void sort(RandomIt first, RandomIt last) {
-        impl::_seq_multiway_qsort(1, first, last);
+        impl::_seq_multiway_qsort(2, first, last);
     }
 
     /**
@@ -375,7 +451,7 @@ namespace mpqsort {
      */
     template <typename RandomIt, typename Compare>
     void sort(RandomIt first, RandomIt last, Compare comp) {
-        impl::_seq_multiway_qsort(1, first, last, comp);
+        impl::_seq_multiway_qsort(2, first, last, comp);
     }
 
     /**
