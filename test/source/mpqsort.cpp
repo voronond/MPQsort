@@ -18,13 +18,13 @@ struct _TAG {
     const std::string IS_EXECUTION_POLICY = "[is_execution_policy]";
     const std::string IS_PARALLEL_EXECUTION_POLICY = "[is_parallel_execution_policy]";
     const std::string SEQ = "[seq_sort]";
-    const std::string SEQ_TWO_WAY = "[seq_two_way_sort]";
+    const std::string SEQ_three_way = "[seq_three_way_sort]";
     const std::string SEQ_MULTIWAY = "[seq_multiway_sort]";
-    const std::string SEQ_ALL = SEQ + SEQ_TWO_WAY + SEQ_MULTIWAY;
+    const std::string SEQ_ALL = SEQ + SEQ_three_way + SEQ_MULTIWAY;
     const std::string PAR = "[par_sort]";
-    const std::string PAR_TWO_WAY = "[par_two_way_sort]";
+    const std::string PAR_three_way = "[par_three_way_sort]";
     const std::string PAR_MULTIWAY = "[par_multiway_sort]";
-    const std::string PAR_ALL = PAR + PAR_TWO_WAY + PAR_MULTIWAY;
+    const std::string PAR_ALL = PAR + PAR_three_way + PAR_MULTIWAY;
     const std::string SORT_ALL = SEQ_ALL + PAR_ALL;
 } TAG;
 
@@ -35,18 +35,18 @@ CATCH_REGISTER_TAG_ALIAS("[@sort_all]", TAG.SORT_ALL.c_str());
 
 // Declare allowed execution policies
 using ALLOWED_EXECUTION_POLICIES
-    = std::tuple<decltype(execution::par_two_way), decltype(execution::par_multi_way),
-                 decltype(execution::par), decltype(execution::seq_two_way),
+    = std::tuple<decltype(execution::par_three_way), decltype(execution::par_multi_way),
+                 decltype(execution::par), decltype(execution::seq_three_way),
                  decltype(execution::seq_multi_way), decltype(execution::seq)>;
 
 // Declare parallel execution policies
 using PARALLEL_EXECUTION_POLICIES
-    = std::tuple<decltype(execution::par_two_way), decltype(execution::par_multi_way),
+    = std::tuple<decltype(execution::par_three_way), decltype(execution::par_multi_way),
                  decltype(execution::par)>;
 
 // Declare sequential execution policies
 using SEQUENTIAL_EXECUTION_POLICIES
-    = std::tuple<decltype(execution::seq_two_way), decltype(execution::seq_multi_way),
+    = std::tuple<decltype(execution::seq_three_way), decltype(execution::seq_multi_way),
                  decltype(execution::seq)>;
 
 // Some disallowed execution policies
@@ -58,6 +58,7 @@ using DISALLOWED_EXECUTION_POLICIES
 TEST_CASE("Not a test case, just setup!") {
     // Turn off optimization for small arrays
     mpqsort::parameters::SEQ_THRESHOLD = 0;
+    mpqsort::parameters::NO_RECURSION_THRESHOLD = 0;
 }
 // TEST CASES
 
@@ -189,7 +190,7 @@ TEST_CASE("Parallel 2 threads block size 2 length") {
     auto test_vector = std::vector<int>{15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0};
     auto test_vector_res = test_vector;
 
-    mpqsort::sort(mpqsort::execution::par_two_way, 2, test_vector.begin(), test_vector.end(),
+    mpqsort::sort(mpqsort::execution::par_three_way, 2, test_vector.begin(), test_vector.end(),
 std::less<int>()); std::sort(test_vector_res.begin(), test_vector_res.end());
 
     REQUIRE_THAT(test_vector, Catch::Equals(test_vector_res));
@@ -374,7 +375,7 @@ TEST_CASE("Specific problematic input", TAG.SORT_ALL) {
     auto test_vector = std::vector<int>{6, 6, 7, 6, 5, 2, 2};
     auto test_vector_res = test_vector;
 
-    mpqsort::sort(mpqsort::execution::seq_two_way, test_vector.begin(), test_vector.end());
+    mpqsort::sort(mpqsort::execution::seq_three_way, test_vector.begin(), test_vector.end());
     std::sort(test_vector_res.begin(), test_vector_res.end());
 
     REQUIRE_THAT(test_vector, Catch::Equals(test_vector_res));

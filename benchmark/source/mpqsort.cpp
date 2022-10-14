@@ -159,6 +159,8 @@ struct RotatedOrderVectorFixture : public RandomVectorFixture<T, Size, From, To>
     }
 };
 
+// TODO: Teeth like structure (for p chunks generate p sorted parts)
+
 // Stringify macro
 #define str(X) #X
 
@@ -270,30 +272,57 @@ register_bench_default(std_parallel_sort);
 register_bench_small_sizes(std_parallel_sort);
 */
 
-// Run mpqsort benchmarks
-#define mpqsort_sort(dataType, bench, type, size, from, to)                                      \
-    BENCHMARK_TEMPLATE_DEFINE_F(dataType##VectorFixture,                                         \
-                                BM_mpqsort_sort_##dataType##_##type##_##bench, type, size, from, \
-                                to)                                                              \
-    (benchmark::State & state) {                                                                 \
-        for (auto _ : state) {                                                                   \
-            state.PauseTiming();                                                                 \
-            Prepare();                                                                           \
-            state.ResumeTiming();                                                                \
-            mpqsort::sort(mpqsort::execution::par_multi_way, vec.begin(), vec.end());            \
-            state.PauseTiming();                                                                 \
-            Destroy();                                                                           \
-            state.ResumeTiming();                                                                \
-        }                                                                                        \
-    }                                                                                            \
-    BENCHMARK_REGISTER_F(dataType##VectorFixture, BM_mpqsort_sort_##dataType##_##type##_##bench) \
-        ->MeasureProcessCPUTime()                                                                \
-        ->UseRealTime()                                                                          \
-        ->Name(str(BM_mpqsort_sort_##dataType##_##type##_##bench));
+// Run mpqsort parallel benchmarks
+#define mpqsort_par_sort(dataType, bench, type, size, from, to)                                \
+    BENCHMARK_TEMPLATE_DEFINE_F(dataType##VectorFixture,                                       \
+                                BM_mpqsort_par_sort_##dataType##_##type##_##bench, type, size, \
+                                from, to)                                                      \
+    (benchmark::State & state) {                                                               \
+        for (auto _ : state) {                                                                 \
+            state.PauseTiming();                                                               \
+            Prepare();                                                                         \
+            state.ResumeTiming();                                                              \
+            mpqsort::sort(mpqsort::execution::par_multi_way, vec.begin(), vec.end());          \
+            state.PauseTiming();                                                               \
+            Destroy();                                                                         \
+            state.ResumeTiming();                                                              \
+        }                                                                                      \
+    }                                                                                          \
+    BENCHMARK_REGISTER_F(dataType##VectorFixture,                                              \
+                         BM_mpqsort_par_sort_##dataType##_##type##_##bench)                    \
+        ->MeasureProcessCPUTime()                                                              \
+        ->UseRealTime()                                                                        \
+        ->Name(str(BM_mpqsort_par_sort_##dataType##_##type##_##bench));
 
-register_bench_default(mpqsort_sort);
-register_bench_small_sizes(mpqsort_sort);
-register_bench_small_values_range(mpqsort_sort);
+register_bench_default(mpqsort_par_sort);
+register_bench_small_sizes(mpqsort_par_sort);
+register_bench_small_values_range(mpqsort_par_sort);
+
+// Run mpqsort sequential multiway benchmarks
+#define mpqsort_seq_sort(dataType, bench, type, size, from, to)                                \
+    BENCHMARK_TEMPLATE_DEFINE_F(dataType##VectorFixture,                                       \
+                                BM_mpqsort_seq_sort_##dataType##_##type##_##bench, type, size, \
+                                from, to)                                                      \
+    (benchmark::State & state) {                                                               \
+        for (auto _ : state) {                                                                 \
+            state.PauseTiming();                                                               \
+            Prepare();                                                                         \
+            state.ResumeTiming();                                                              \
+            mpqsort::sort(mpqsort::execution::seq_three_way, vec.begin(), vec.end());          \
+            state.PauseTiming();                                                               \
+            Destroy();                                                                         \
+            state.ResumeTiming();                                                              \
+        }                                                                                      \
+    }                                                                                          \
+    BENCHMARK_REGISTER_F(dataType##VectorFixture,                                              \
+                         BM_mpqsort_seq_sort_##dataType##_##type##_##bench)                    \
+        ->MeasureProcessCPUTime()                                                              \
+        ->UseRealTime()                                                                        \
+        ->Name(str(BM_mpqsort_seq_sort_##dataType##_##type##_##bench));
+
+register_bench_default(mpqsort_seq_sort);
+register_bench_small_sizes(mpqsort_seq_sort);
+register_bench_small_values_range(mpqsort_seq_sort);
 
 // Run gnu qs sort benchmarks
 // In-place parallel qsort
@@ -421,4 +450,5 @@ register_bench_default(nvidia_thrust_sort);
 register_bench_small_sizes(nvidia_thrust_sort);
 
 register_bench_small_size_threshold(std_sort);
-register_bench_small_size_threshold(mpqsort_sort)
+register_bench_small_size_threshold(mpqsort_seq_sort)
+register_bench_small_size_threshold(mpqsort_par_sort)

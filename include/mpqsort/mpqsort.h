@@ -27,9 +27,9 @@
 namespace mpqsort::execution {
     // Execution policy class declaration
 
-    class sequenced_policy_two_way {};
+    class sequenced_policy_three_way {};
     class sequenced_policy_multi_way {};
-    class parallel_policy_two_way {};
+    class parallel_policy_three_way {};
     class parallel_policy_multi_way {};
 
     // TODO: maybe add unseq if possible (standard and self defined)
@@ -48,7 +48,7 @@ namespace mpqsort::execution {
     /**
      * @brief Sequenced execution policy using two pivots
      */
-    inline constexpr sequenced_policy_two_way seq_two_way{};
+    inline constexpr sequenced_policy_three_way seq_three_way{};
 
     /**
      * @brief Sequenced execution policy using multiple pivots. The number of pivots will be
@@ -59,7 +59,7 @@ namespace mpqsort::execution {
     /**
      * @brief Parallel execution policy using two pivots
      */
-    inline constexpr parallel_policy_two_way par_two_way{};
+    inline constexpr parallel_policy_three_way par_three_way{};
 
     /**
      * @brief Parallel execution policy using multiple pivots. The number of pivots will be
@@ -104,12 +104,12 @@ namespace mpqsort::execution {
         = _is_parallel_execution_policy_helper<std::decay_t<T>>::value;
 
     // Allowed execution policies
-    template <> struct _is_execution_policy_helper<sequenced_policy_two_way> : std::true_type {};
+    template <> struct _is_execution_policy_helper<sequenced_policy_three_way> : std::true_type {};
     template <> struct _is_execution_policy_helper<sequenced_policy_multi_way> : std::true_type {};
-    template <> struct _is_execution_policy_helper<parallel_policy_two_way> : std::true_type {};
+    template <> struct _is_execution_policy_helper<parallel_policy_three_way> : std::true_type {};
     template <> struct _is_execution_policy_helper<parallel_policy_multi_way> : std::true_type {};
 
-    template <> struct _is_parallel_execution_policy_helper<parallel_policy_two_way>
+    template <> struct _is_parallel_execution_policy_helper<parallel_policy_three_way>
         : std::true_type {};
     template <> struct _is_parallel_execution_policy_helper<parallel_policy_multi_way>
         : std::true_type {};
@@ -162,6 +162,7 @@ namespace mpqsort::parameters {
      */
     // static size_t CACHELINE_SIZE = 64;
     static size_t SEQ_THRESHOLD = 1 << 17;  // based on benchmarks
+    static size_t NO_RECURSION_THRESHOLD = 64;
 }  // namespace mpqsort::parameters
 
 /**
@@ -365,7 +366,7 @@ namespace mpqsort::impl {
             // Call with one pivot
             _seq_multiway_qsort(1, std::forward<T>(args)...);
         } else if constexpr (helpers::_is_same_decay_v<ExecutionPolicy,
-                                                       decltype(execution::seq_two_way)>) {
+                                                       decltype(execution::seq_three_way)>) {
             // Call with two pivots
             _seq_multiway_qsort(2, std::forward<T>(args)...);
         } else if constexpr (helpers::_is_same_decay_v<ExecutionPolicy,
@@ -376,7 +377,7 @@ namespace mpqsort::impl {
             // Call with one pivot
             _par_multiway_qsort(1, std::forward<T>(args)...);
         } else if constexpr (helpers::_is_same_decay_v<ExecutionPolicy,
-                                                       decltype(execution::par_two_way)>) {
+                                                       decltype(execution::par_three_way)>) {
             // Call with two pivots
             _par_multiway_qsort(2, std::forward<T>(args)...);
         } else if constexpr (helpers::_is_same_decay_v<ExecutionPolicy,
