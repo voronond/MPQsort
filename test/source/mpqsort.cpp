@@ -402,7 +402,7 @@ TEMPLATE_LIST_TEST_CASE(
     "Sort vectors, different sizes and random numbers. Last chance to catch errors.", TAG.SORT_ALL,
     ALLOWED_EXECUTION_POLICIES) {
     // Random length from 100 to 10000
-    auto vector_length = GENERATE(take(100, random(100, 1000)));
+    auto vector_length = GENERATE(take(100, random(100, 10000)));
     // Generate vector with random numbers
     auto test_vector = GENERATE(chunk(10000, take(10000, random(0, 1000000))));
     test_vector.resize(vector_length);

@@ -197,7 +197,7 @@ namespace mpqsort::impl {
     }
 
     template <typename NumPivot, typename RandomBaseIt, typename Compare>
-    auto _seq_multiway_partition(NumPivot pivot_num, RandomBaseIt base, size_t lp, size_t rp,
+    auto _seq_multiway_partition(NumPivot pivot_num, RandomBaseIt base, long lp, long rp,
                                  Compare& comp) {
         // Use optimal swap method
         using std::swap;
@@ -236,22 +236,23 @@ namespace mpqsort::impl {
             k++;
         }
 
-        return std::tuple{k2 == 0 ? 0 : k2 - 1, g == rp ? g : g + 1};
+        return std::tuple{k2, g};
     }
 
     template <typename NumPivot, typename RandomBaseIt, typename Compare>
-    void _seq_multiway_qsort_inner(NumPivot pivot_num, RandomBaseIt base, size_t lp, size_t rp,
+    void _seq_multiway_qsort_inner(NumPivot pivot_num, RandomBaseIt base, long lp, long rp,
                                    Compare& comp) {
-        if (lp < rp)
-        {
-            auto [index_p1, index_p2] = _seq_multiway_partition(pivot_num, base, lp, rp, comp);
-            PRINT_ITERS(base, lp, rp, "After partitioning seq multiway");
-            if (index_p1 != 0)
-                _seq_multiway_qsort_inner(pivot_num, base, lp, index_p1 - 1, comp);
-            if (index_p2 != 0)
-                _seq_multiway_qsort_inner(pivot_num, base, index_p1, index_p2 - 1, comp);
-            _seq_multiway_qsort_inner(pivot_num, base, index_p2, rp, comp);
-        }
+        //if (lp < rp)
+        if (lp >= rp)
+            return;
+
+        auto [index_p1, index_p2] = _seq_multiway_partition(pivot_num, base, lp, rp, comp);
+
+        PRINT_ITERS(base, lp, rp, "After partitioning seq multiway");
+
+        _seq_multiway_qsort_inner(pivot_num, base, lp, index_p1 - 1, comp);
+        _seq_multiway_qsort_inner(pivot_num, base, index_p1, index_p2, comp);
+        _seq_multiway_qsort_inner(pivot_num, base, index_p2 + 1, rp, comp);
     }
 
     template <typename NumPivot, typename RandomIt,
