@@ -2,13 +2,13 @@
 
 #include <omp.h>
 
+#include <array>
+#include <cassert>
 #include <execution>
 #include <iostream>
 #include <iterator>
 #include <limits>
-#include <array>
 #include <random>
-#include <cassert>
 #include <type_traits>
 
 // TODO: remove after all methods implemented
@@ -263,13 +263,14 @@ namespace mpqsort::parameters {
      * prevent false sharing between threads. The value is in bytes.
      */
     // static size_t CACHELINE_SIZE = 64;
-    static size_t SEQ_THRESHOLD = 1 << 17;  // based on benchmarks
-    static long NO_RECURSION_THRESHOLD = 64; // based on benchmarks
+    static size_t SEQ_THRESHOLD = 1 << 17;    // based on benchmarks
+    static long NO_RECURSION_THRESHOLD = 64;  // based on benchmarks
     /**
      * @brief Maximum supported number of pivots by MPQsort
-     * This is the max number of pivots that can MPQsort use during computation. This can't be changed by the user.
+     * This is the max number of pivots that can MPQsort use during computation. This can't be
+     * changed by the user.
      */
-    const static long MAX_NUMBER_OF_PIVOTS = 3; // can't be changed during runtime
+    const static long MAX_NUMBER_OF_PIVOTS = 3;  // can't be changed during runtime
 }  // namespace mpqsort::parameters
 
 /**
@@ -281,8 +282,7 @@ namespace mpqsort::impl {
     // SEQ
 
     template <long NumPivot, typename RandomBaseIt, typename Compare>
-    inline auto _get_pivots(RandomBaseIt base, long lp, long rp,
-                                   Compare& comp) {
+    inline auto _get_pivots(RandomBaseIt base, long lp, long rp, Compare& comp) {
         using std::swap;
         static_assert(NumPivot <= parameters::MAX_NUMBER_OF_PIVOTS);
 
