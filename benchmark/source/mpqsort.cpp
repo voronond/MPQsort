@@ -44,7 +44,8 @@ template <typename T, long Size = -1, int From = -1, int To = -1> struct VectorF
     // Calculate how many elements to generate to fill half of the system memory
     auto VectorSizeToFillHalfMemory() const {
 #ifdef TESTING
-        return 100000000;
+        // return 100000000;
+        return 1000000;
         // return 8 * 1024 * 1024 * (1024 / sizeof(double));
 #else
         auto pages = sysconf(_SC_PHYS_PAGES);
@@ -213,14 +214,15 @@ struct RotatedOrderVectorFixture : public RandomVectorFixture<T, Size, From, To>
 
 // Helps to find out threshold when to switch to sequential algorithm
 #define small_sizes_threshold small_size_threshold
-#define register_bench_small_size_threshold(name)                                     \
-    register_bench_int_random(name, small_size_threshold##_##50000, 50000, -1, -1);   \
-    register_bench_int_random(name, small_size_threshold##_##100000, 100000, -1, -1); \
-    register_bench_int_random(name, small_size_threshold##_##200000, 200000, -1, -1); \
-    register_bench_int_random(name, small_size_threshold##_##300000, 300000, -1, -1); \
-    register_bench_int_random(name, small_size_threshold##_##400000, 400000, -1, -1); \
-    register_bench_int_random(name, small_size_threshold##_##500000, 500000, -1, -1); \
-    register_bench_int_random(name, small_size_threshold##_##1000000, 1000000, -1, -1);
+#define register_bench_small_size_threshold(name)                                       \
+    register_bench_int_random(name, small_size_threshold##_##50000, 50000, -1, -1);     \
+    register_bench_int_random(name, small_size_threshold##_##100000, 100000, -1, -1);   \
+    register_bench_int_random(name, small_size_threshold##_##200000, 200000, -1, -1);   \
+    register_bench_int_random(name, small_size_threshold##_##300000, 300000, -1, -1);   \
+    register_bench_int_random(name, small_size_threshold##_##400000, 400000, -1, -1);   \
+    register_bench_int_random(name, small_size_threshold##_##500000, 500000, -1, -1);   \
+    register_bench_int_random(name, small_size_threshold##_##1000000, 1000000, -1, -1); \
+    register_bench_int_random(name, small_size_threshold##_##10000000, 10000000, -1, -1);
 
 // Run std sort benchmarks
 #define std_sort(dataType, bench, type, size, from, to)                                          \

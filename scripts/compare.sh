@@ -26,7 +26,7 @@ else
 fi
 
 # Run script
-python ${TOOLS_DIR}/compare.py "$@"
+python ${TOOLS_DIR}/compare.py "$@" --benchmark_time_unit=ms
 
 # Deactivate
 deactivate

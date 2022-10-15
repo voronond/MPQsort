@@ -58,7 +58,7 @@ using DISALLOWED_EXECUTION_POLICIES
 TEST_CASE("Not a test case, just setup!") {
     // Turn off optimization for small arrays
     mpqsort::parameters::SEQ_THRESHOLD = 0;
-    mpqsort::parameters::NO_RECURSION_THRESHOLD = 0;
+    mpqsort::parameters::NO_RECURSION_THRESHOLD = 5;
 }
 // TEST CASES
 
@@ -196,6 +196,14 @@ std::less<int>()); std::sort(test_vector_res.begin(), test_vector_res.end());
     REQUIRE_THAT(test_vector, Catch::Equals(test_vector_res));
 }
 */
+
+TEST_CASE("HeapInsertion sort") {
+    auto test_vector = std::vector<int>{7, 6, 5, 4, 8};
+    auto comp = std::less<int>();
+    mpqsort::helpers::_heap_insertion_sort(test_vector.begin(), 0, test_vector.size() - 1, comp);
+
+    REQUIRE_THAT(test_vector, Catch::Equals(std::vector<int>{4, 5, 6, 7, 8}));
+}
 
 // Test correctness of implementations
 TEMPLATE_LIST_TEST_CASE("Increasing vector sizes", TAG.SORT_ALL, ALLOWED_EXECUTION_POLICIES) {
