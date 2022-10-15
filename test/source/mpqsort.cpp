@@ -35,18 +35,18 @@ CATCH_REGISTER_TAG_ALIAS("[@sort_all]", TAG.SORT_ALL.c_str());
 
 // Declare allowed execution policies
 using ALLOWED_EXECUTION_POLICIES
-    = std::tuple<decltype(execution::par_three_way), decltype(execution::par_multi_way),
+    = std::tuple<decltype(execution::par_three_way), decltype(execution::par_max_way),
                  decltype(execution::par), decltype(execution::seq_three_way),
-                 decltype(execution::seq_multi_way), decltype(execution::seq)>;
+                 decltype(execution::seq_max_way), decltype(execution::seq)>;
 
 // Declare parallel execution policies
 using PARALLEL_EXECUTION_POLICIES
-    = std::tuple<decltype(execution::par_three_way), decltype(execution::par_multi_way),
+    = std::tuple<decltype(execution::par_three_way), decltype(execution::par_max_way),
                  decltype(execution::par)>;
 
 // Declare sequential execution policies
 using SEQUENTIAL_EXECUTION_POLICIES
-    = std::tuple<decltype(execution::seq_three_way), decltype(execution::seq_multi_way),
+    = std::tuple<decltype(execution::seq_three_way), decltype(execution::seq_max_way),
                  decltype(execution::seq)>;
 
 // Some disallowed execution policies

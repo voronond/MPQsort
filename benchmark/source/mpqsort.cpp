@@ -284,7 +284,7 @@ register_bench_small_sizes(std_parallel_sort);
             state.PauseTiming();                                                               \
             Prepare();                                                                         \
             state.ResumeTiming();                                                              \
-            mpqsort::sort(mpqsort::execution::par_multi_way, vec.begin(), vec.end());          \
+            mpqsort::sort(mpqsort::execution::par_max_way, vec.begin(), vec.end());          \
             state.PauseTiming();                                                               \
             Destroy();                                                                         \
             state.ResumeTiming();                                                              \

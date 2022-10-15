@@ -6,7 +6,9 @@
 #include <iostream>
 #include <iterator>
 #include <limits>
+#include <array>
 #include <random>
+#include <cassert>
 #include <type_traits>
 
 // TODO: remove after all methods implemented
@@ -28,9 +30,9 @@ namespace mpqsort::execution {
     // Execution policy class declaration
 
     class sequenced_policy_three_way {};
-    class sequenced_policy_multi_way {};
+    class sequenced_policy_max_way {};
     class parallel_policy_three_way {};
-    class parallel_policy_multi_way {};
+    class parallel_policy_max_way {};
 
     // TODO: maybe add unseq if possible (standard and self defined)
     /**
@@ -54,7 +56,7 @@ namespace mpqsort::execution {
      * @brief Sequenced execution policy using multiple pivots. The number of pivots will be
      * determined by the algorithm
      */
-    inline constexpr sequenced_policy_multi_way seq_multi_way{};
+    inline constexpr sequenced_policy_max_way seq_max_way{};
 
     /**
      * @brief Parallel execution policy using two pivots
@@ -65,7 +67,7 @@ namespace mpqsort::execution {
      * @brief Parallel execution policy using multiple pivots. The number of pivots will be
      * determined by the algorithm
      */
-    inline constexpr parallel_policy_multi_way par_multi_way{};
+    inline constexpr parallel_policy_max_way par_max_way{};
 
     // Define own type trait to determine if we got policy type
 
@@ -105,13 +107,13 @@ namespace mpqsort::execution {
 
     // Allowed execution policies
     template <> struct _is_execution_policy_helper<sequenced_policy_three_way> : std::true_type {};
-    template <> struct _is_execution_policy_helper<sequenced_policy_multi_way> : std::true_type {};
+    template <> struct _is_execution_policy_helper<sequenced_policy_max_way> : std::true_type {};
     template <> struct _is_execution_policy_helper<parallel_policy_three_way> : std::true_type {};
-    template <> struct _is_execution_policy_helper<parallel_policy_multi_way> : std::true_type {};
+    template <> struct _is_execution_policy_helper<parallel_policy_max_way> : std::true_type {};
 
     template <> struct _is_parallel_execution_policy_helper<parallel_policy_three_way>
         : std::true_type {};
-    template <> struct _is_parallel_execution_policy_helper<parallel_policy_multi_way>
+    template <> struct _is_parallel_execution_policy_helper<parallel_policy_max_way>
         : std::true_type {};
 
     // Allowed STD execution policies
@@ -262,7 +264,12 @@ namespace mpqsort::parameters {
      */
     // static size_t CACHELINE_SIZE = 64;
     static size_t SEQ_THRESHOLD = 1 << 17;  // based on benchmarks
-    static long NO_RECURSION_THRESHOLD = 64;
+    static long NO_RECURSION_THRESHOLD = 64; // based on benchmarks
+    /**
+     * @brief Maximum supported number of pivots by MPQsort
+     * This is the max number of pivots that can MPQsort use during computation. This can't be changed by the user.
+     */
+    const static long MAX_NUMBER_OF_PIVOTS = 3; // can't be changed during runtime
 }  // namespace mpqsort::parameters
 
 /**
@@ -273,21 +280,23 @@ namespace mpqsort::impl {
     // OpenMP mergeable possible if shared variables (code gets executed as separate task or not)
     // SEQ
 
-    template <typename NumPivot, typename RandomBaseIt, typename Compare>
-    inline auto _get_pivot_indexes(NumPivot pivot_num, RandomBaseIt base, size_t lp, size_t rp,
+    template <long NumPivot, typename RandomBaseIt, typename Compare>
+    inline auto _get_pivots(RandomBaseIt base, long lp, long rp,
                                    Compare& comp) {
-        // TODO: Implement better strategy for choosing the pivot
+        using std::swap;
+        static_assert(NumPivot <= parameters::MAX_NUMBER_OF_PIVOTS);
+
         static std::mt19937 en(0);
-        // Numbers <lp, rp>
         std::uniform_int_distribution<size_t> dist(lp, rp);
 
-        std::vector<size_t> indexes(pivot_num);
-        for (NumPivot i = 0; i < pivot_num; ++i) indexes.emplace_back(dist(en));
+        if constexpr (NumPivot == 1) {
+            return base[dist(en)];
+        } else if constexpr (NumPivot == 2) {
+            auto idx1 = dist(en), idx2 = dist(en);
+            if (!comp(base[idx1], base[idx2])) swap(base[idx1], base[idx2]);
 
-        std::sort(indexes.begin(), indexes.end(),
-                  [&](size_t a, size_t b) { return comp(base[a], base[b]); });
-
-        return indexes;
+            return std::tuple{base[idx1], base[idx2]};
+        }
     }
 
     template <typename NumPivot, typename RandomBaseIt, typename Compare>
@@ -297,11 +306,8 @@ namespace mpqsort::impl {
         using std::swap;
         UNUSED(pivot_num);
 
-        // Swap pivots if they are not at the right position
-        if (!comp(base[lp], base[rp])) swap(base[lp], base[rp]);
-
         // Get pivots
-        auto p1 = base[lp], p2 = base[rp];
+        auto [p1, p2] = _get_pivots<2>(base, lp, rp, comp);
 
         // Set boundaries
         auto k2 = lp, k = k2, g = rp;
@@ -469,9 +475,9 @@ namespace mpqsort::impl {
             // Call with two pivots
             _seq_multiway_qsort(2, std::forward<T>(args)...);
         } else if constexpr (helpers::_is_same_decay_v<ExecutionPolicy,
-                                                       decltype(execution::seq_multi_way)>) {
+                                                       decltype(execution::seq_max_way)>) {
             // Let algorithm decide how many pivots to use
-            _seq_multiway_qsort(std::numeric_limits<int>::max, std::forward<T>(args)...);
+            _seq_multiway_qsort(parameters::MAX_NUMBER_OF_PIVOTS, std::forward<T>(args)...);
         } else if constexpr (helpers::_is_same_decay_v<ExecutionPolicy, decltype(execution::par)>) {
             // Call with one pivot
             _par_multiway_qsort(1, std::forward<T>(args)...);
@@ -480,9 +486,9 @@ namespace mpqsort::impl {
             // Call with two pivots
             _par_multiway_qsort(2, std::forward<T>(args)...);
         } else if constexpr (helpers::_is_same_decay_v<ExecutionPolicy,
-                                                       decltype(execution::par_multi_way)>) {
+                                                       decltype(execution::par_max_way)>) {
             // Let algorithm decide how many pivots to use
-            _par_multiway_qsort(std::numeric_limits<int>::max, std::forward<T>(args)...);
+            _par_multiway_qsort(parameters::MAX_NUMBER_OF_PIVOTS, std::forward<T>(args)...);
         } else {
             throw std::invalid_argument(
                 "Unknown policy. This should never happen as we test policy type at a beginning of "
