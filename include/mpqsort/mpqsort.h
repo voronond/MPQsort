@@ -278,7 +278,7 @@ namespace mpqsort::helpers {
         static_assert(NumPivot <= parameters::MAX_NUMBER_OF_PIVOTS);
 
         static std::mt19937 en(0);
-        std::uniform_int_distribution<size_t> dist(lp, rp);
+        std::uniform_int_distribution<long> dist(lp, rp);
 
         if constexpr (NumPivot == 1) {
             return base[dist(en)];
@@ -300,12 +300,11 @@ namespace mpqsort::impl {
     // OpenMP mergeable possible if shared variables (code gets executed as separate task or not)
     // SEQ
 
-    template <typename NumPivot, typename RandomBaseIt, typename Compare>
-    inline auto _seq_multiway_partition(NumPivot pivot_num, RandomBaseIt base, long lp, long rp,
-                                        Compare& comp) {
+    template <typename RandomBaseIt, typename Compare>
+    inline auto _seq_multiway_partition_two_pivots(RandomBaseIt base, long lp, long rp,
+                                                   Compare& comp) {
         // Use optimal swap method
         using std::swap;
-        UNUSED(pivot_num);
 
         // Get pivots
         auto [p1, p2] = helpers::_get_pivots<2>(base, lp, rp, comp);
@@ -342,7 +341,7 @@ namespace mpqsort::impl {
     void _seq_multiway_qsort_inner(NumPivot pivot_num, RandomBaseIt base, long lp, long rp,
                                    Compare& comp) {
         while (rp - lp > parameters::NO_RECURSION_THRESHOLD) {
-            auto [index_p1, index_p2] = _seq_multiway_partition(pivot_num, base, lp, rp, comp);
+            auto [index_p1, index_p2] = _seq_multiway_partition_two_pivots(base, lp, rp, comp);
 
             PRINT_ITERS(base, lp, rp, "After partitioning seq multiway");
 
