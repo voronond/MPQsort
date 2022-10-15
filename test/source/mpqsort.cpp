@@ -185,6 +185,7 @@ TEMPLATE_LIST_TEST_CASE("Instantiation of a sort overloads with policy", TAG.SOR
     REQUIRE_THAT(test_vector, Catch::Equals(test_vector_res));
 }
 
+/*
 TEST_CASE("Parallel 2 threads block size 2 length") {
     auto test_vector = std::vector<int>{15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0};
     auto test_vector_res = test_vector;
@@ -195,6 +196,7 @@ TEST_CASE("Parallel 2 threads block size 2 length") {
 
     REQUIRE_THAT(test_vector, Catch::Equals(test_vector_res));
 }
+*/
 
 TEST_CASE("HeapInsertion sort") {
     auto test_vector = std::vector<int>{7, 6, 5, 4, 8};

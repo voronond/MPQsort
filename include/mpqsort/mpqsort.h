@@ -126,6 +126,26 @@ namespace mpqsort::execution {
         : std::true_type {};
 }  // namespace mpqsort::execution
 
+/**
+ * @brief This namespace contains parameters for algorithm tuning
+ */
+namespace mpqsort::parameters {
+    /**
+     * @brief Cacheline of your system
+     * Threads process the array in blocks and those blocks are the multiple of cacheline size to
+     * prevent false sharing between threads. The value is in bytes.
+     */
+    // static size_t CACHELINE_SIZE = 64;
+    static size_t SEQ_THRESHOLD = 1 << 17;    // based on benchmarks
+    static long NO_RECURSION_THRESHOLD = 64;  // based on benchmarks
+    /**
+     * @brief Maximum supported number of pivots by MPQsort
+     * This is the max number of pivots that can MPQsort use during computation. This can't be
+     * changed by the user.
+     */
+    const static long MAX_NUMBER_OF_PIVOTS = 3;  // can't be changed during runtime
+}  // namespace mpqsort::parameters
+
 namespace mpqsort::helpers {
     // Extension of is_same applying decay_t automatically
     template <typename T, typename U> inline constexpr bool _is_same_decay_v
@@ -251,35 +271,6 @@ namespace mpqsort::helpers {
         _unguarded_insertion_sort(base, lp + 1, rp, comp);
         PRINT_ITERS(base, lp, rp, "After insertion sort");
     }
-}  // namespace mpqsort::helpers
-
-/**
- * @brief This namespace contains parameters for algorithm tuning
- */
-namespace mpqsort::parameters {
-    /**
-     * @brief Cacheline of your system
-     * Threads process the array in blocks and those blocks are the multiple of cacheline size to
-     * prevent false sharing between threads. The value is in bytes.
-     */
-    // static size_t CACHELINE_SIZE = 64;
-    static size_t SEQ_THRESHOLD = 1 << 17;    // based on benchmarks
-    static long NO_RECURSION_THRESHOLD = 64;  // based on benchmarks
-    /**
-     * @brief Maximum supported number of pivots by MPQsort
-     * This is the max number of pivots that can MPQsort use during computation. This can't be
-     * changed by the user.
-     */
-    const static long MAX_NUMBER_OF_PIVOTS = 3;  // can't be changed during runtime
-}  // namespace mpqsort::parameters
-
-/**
- * @brief Implementation of multiway quicksort and multiway parallel quicksort
- */
-namespace mpqsort::impl {
-    // ----- Main implementation START -----
-    // OpenMP mergeable possible if shared variables (code gets executed as separate task or not)
-    // SEQ
 
     template <long NumPivot, typename RandomBaseIt, typename Compare>
     inline auto _get_pivots(RandomBaseIt base, long lp, long rp, Compare& comp) {
@@ -299,6 +290,16 @@ namespace mpqsort::impl {
         }
     }
 
+}  // namespace mpqsort::helpers
+
+/**
+ * @brief Implementation of multiway quicksort and multiway parallel quicksort
+ */
+namespace mpqsort::impl {
+    // ----- Main implementation START -----
+    // OpenMP mergeable possible if shared variables (code gets executed as separate task or not)
+    // SEQ
+
     template <typename NumPivot, typename RandomBaseIt, typename Compare>
     inline auto _seq_multiway_partition(NumPivot pivot_num, RandomBaseIt base, long lp, long rp,
                                         Compare& comp) {
@@ -307,7 +308,7 @@ namespace mpqsort::impl {
         UNUSED(pivot_num);
 
         // Get pivots
-        auto [p1, p2] = _get_pivots<2>(base, lp, rp, comp);
+        auto [p1, p2] = helpers::_get_pivots<2>(base, lp, rp, comp);
 
         // Set boundaries
         auto k2 = lp, k = k2, g = rp;
@@ -380,6 +381,7 @@ namespace mpqsort::impl {
         using std::swap;
 
         // Last element as pivot
+        // TODO: Select random pivots
         auto pivot = base[rp];  // Access last element value
         // Indexes
         auto i = lp;
@@ -438,6 +440,7 @@ namespace mpqsort::impl {
 
         // Set OpenMP parameters
         omp_set_max_active_levels(std::numeric_limits<int>::max());  // Allow nested parallelism
+                                                                     // omp_set_nested(1);
 #pragma omp parallel firstprivate(pivot_num, first, last, comp) num_threads(cores)
         {
 #pragma omp single
