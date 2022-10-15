@@ -181,20 +181,17 @@ namespace mpqsort::helpers {
             auto parent = first_parent;
             auto right_kid = first_right_kid;
             for (;;) {
-                //auto tmp = right_kid - (base[right_kid - 1] <= base[right_kid]);
                 auto tmp = right_kid - comp(base[right_kid - 1], base[right_kid]);
                 auto crt = base[tmp];
-                //if (drop_down <= crt)
-                if (comp(drop_down, crt))
-                    break;
+                if (comp(drop_down, crt)) break;
                 base[parent] = crt;
                 parent = tmp;
                 right_kid = (tmp + 1) * 2;
-                if (right_kid >= size)
-                    goto write;
+                if (right_kid >= size) goto write;
             }
             if (parent != first_parent)
-                write: base[parent] = drop_down;
+            write:  // Ugly but very efficient
+                base[parent] = drop_down;
             if (first_parent == 0) break;
         }
 
@@ -205,43 +202,49 @@ namespace mpqsort::helpers {
     }
 
     template <typename RandomBaseIt, typename Compare>
-    void _unguarded_insertion_sort(RandomBaseIt base, long lp, long rp, Compare& comp) {
-    // Index of first sorted element
-        for (auto i = lp + 1; i <= rp; ++i) {
+    inline void _unguarded_insertion_sort(RandomBaseIt base, long lp, long rp, Compare& comp) {
+        // Index of first sorted element
+        for (auto i = lp + 1;;) {
             auto el = base[i];
             auto j = i - 1;
 
             for (; j >= lp; --j) {
                 if (comp(el, base[j])) {
                     base[j + 1] = base[j];
+                    continue;
                 }
-                else {
-                    break;
-                }
+                // Elements are "partially sorted" so we do not need to do bounds checking
+                // meaning stop iter when comp false
+                break;
             }
 
             base[j + 1] = el;
+
+            // Save one increment
+            if (i >= rp) return;
+            ++i;
         }
     }
 
-    // Implementation based on https://github.com/CppCon/CppCon2019/blob/master/Presentations/speed_is_found_in_the_minds_of_people/speed_is_found_in_the_minds_of_people__andrei_alexandrescu__cppcon_2019.pdf
+    // Implementation based on
+    // https://github.com/CppCon/CppCon2019/blob/master/Presentations/speed_is_found_in_the_minds_of_people/speed_is_found_in_the_minds_of_people__andrei_alexandrescu__cppcon_2019.pdf
     template <typename RandomBaseIt, typename Compare>
     inline void _heap_insertion_sort(RandomBaseIt base, long lp, long rp, Compare& comp) {
         using std::swap;
 
         long size = rp - lp;
-        // size == 1 if sort 2 elements, otherwise swap nothing
-        if (size < 2)
-        {
+        // size == 1 if sort 2 elements, otherwise swap element with itself
+        if (size < 2) {
             if (!comp(base[lp], base[lp + (size == 1)])) swap(base[lp], base[lp + (size == 1)]);
             return;
         }
 
         // Create comparator for other functions
-        auto less_equal
-            = [&](auto& a, auto& b) { return comp(a, b) || !comp(b, a); };
+        auto less_equal = [&](auto& a, auto& b) { return comp(a, b) || !comp(b, a); };
 
-        _make_heap(base + lp, size + 1, less_equal); // needs number of elements not index of the last one
+        // needs number of elements not index of the last one
+        // Partially sort array for effective unbound inser sort
+        _make_heap(base + lp, size + 1, less_equal);
         PRINT_ITERS(base, lp, rp, "After make heap");
         _unguarded_insertion_sort(base, lp + 1, rp, comp);
         PRINT_ITERS(base, lp, rp, "After insertion sort");
@@ -287,10 +290,9 @@ namespace mpqsort::impl {
         return indexes;
     }
 
-
     template <typename NumPivot, typename RandomBaseIt, typename Compare>
     inline auto _seq_multiway_partition(NumPivot pivot_num, RandomBaseIt base, long lp, long rp,
-                                 Compare& comp) {
+                                        Compare& comp) {
         // Use optimal swap method
         using std::swap;
         UNUSED(pivot_num);
@@ -343,7 +345,7 @@ namespace mpqsort::impl {
         }
 
         if (lp >= rp) return;
-        //std::sort(base + lp, base + rp + 1, comp);
+        // std::sort(base + lp, base + rp + 1, comp);
 
         PRINT_ITERS(base, lp, rp, "Before heap insert sort");
         helpers::_heap_insertion_sort(base, lp, rp, comp);
