@@ -246,6 +246,7 @@ struct RotatedOrderVectorFixture : public RandomVectorFixture<T, Size, From, To>
 
 register_bench_default(std_sort);
 register_bench_small_sizes(std_sort);
+register_bench_small_values_range(std_sort);
 
 // Run std parallel sort benchmarks
 // STL implementation is broken as it allocates all memory!!!!

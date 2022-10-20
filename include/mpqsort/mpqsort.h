@@ -137,7 +137,7 @@ namespace mpqsort::parameters {
      */
     // static size_t CACHELINE_SIZE = 64;
     static size_t SEQ_THRESHOLD = 1 << 17;    // based on benchmarks
-    static long NO_RECURSION_THRESHOLD = 64;  // based on benchmarks
+    static long NO_RECURSION_THRESHOLD = 128;  // based on benchmarks
     /**
      * @brief Maximum supported number of pivots by MPQsort
      * This is the max number of pivots that can MPQsort use during computation. This can't be
@@ -212,7 +212,7 @@ namespace mpqsort::helpers {
                 if (right_kid >= size) goto write;
             }
             if (parent != first_parent)
-            write:  // Ugly but very efficient
+            write:  // Ugly but efficient
                 base[parent] = drop_down;
             if (first_parent == 0) break;
         }
@@ -230,14 +230,10 @@ namespace mpqsort::helpers {
             auto el = base[i];
             auto j = i - 1;
 
-            for (; j >= lp; --j) {
-                if (comp(el, base[j])) {
-                    base[j + 1] = base[j];
-                    continue;
-                }
-                // Elements are "partially sorted" so we do not need to do bounds checking
-                // meaning stop iter when comp false
-                break;
+            while (j >= lp && comp(el, base[j]))
+            {
+                base[j + 1] = base[j];
+                --j;
             }
 
             base[j + 1] = el;
@@ -261,19 +257,14 @@ namespace mpqsort::helpers {
             return;
         }
 
-        // Create comparator for other functions
-        auto less_equal = [&](auto& a, auto& b) { return comp(a, b) || !comp(b, a); };
-
         // needs number of elements not index of the last one
         // Partially sort array for effective unbound inser sort
-        _make_heap(base + lp, size + 1, less_equal);
-        PRINT_ITERS(base, lp, rp, "After make heap");
+        _make_heap(base + lp, size + 1, comp);
         _unguarded_insertion_sort(base, lp + 1, rp, comp);
-        PRINT_ITERS(base, lp, rp, "After insertion sort");
     }
 
-    template <long NumPivot, typename RandomBaseIt, typename Compare>
-    inline auto _get_pivots(RandomBaseIt base, long lp, long rp, Compare& comp) {
+    template <long NumPivot>
+    inline auto _get_pivots_indexes(long lp, long rp) {
         using std::swap;
         static_assert(NumPivot <= parameters::MAX_NUMBER_OF_PIVOTS);
 
@@ -281,12 +272,14 @@ namespace mpqsort::helpers {
         std::uniform_int_distribution<long> dist(lp, rp);
 
         if constexpr (NumPivot == 1) {
-            return base[dist(en)];
+            return dist(en);
         } else if constexpr (NumPivot == 2) {
-            auto idx1 = dist(en), idx2 = dist(en);
-            if (!comp(base[idx1], base[idx2])) swap(base[idx1], base[idx2]);
+            auto idx1 = dist(en);
+            auto idx2 = dist(en);
 
-            return std::tuple{base[idx1], base[idx2]};
+            while (idx1 == idx2) idx2 = dist(en); // Generate distinct pivot indexes
+
+            return std::tuple{idx1, idx2};
         }
     }
 
@@ -307,10 +300,20 @@ namespace mpqsort::impl {
         using std::swap;
 
         // Get pivots
-        auto [p1, p2] = helpers::_get_pivots<2>(base, lp, rp, comp);
+        auto [idx1, idx2] = helpers::_get_pivots_indexes<2>(lp + 1, rp - 1);
+
+        if (comp(base[idx1], base[idx2])) {
+            swap(base[lp], base[idx1]);
+            swap(base[rp], base[idx2]);
+        } else {
+            swap(base[lp], base[idx2]);
+            swap(base[rp], base[idx1]);
+        }
+
+        auto p1 = base[lp], p2 = base[rp];
 
         // Set boundaries
-        auto k2 = lp, k = k2, g = rp;
+        auto k2 = lp + 1, k = k2, g = rp - 1;
 
         while (k <= g) {
             if (comp(base[k], p1)) {
@@ -334,28 +337,24 @@ namespace mpqsort::impl {
             ++k;
         }
 
-        return std::tuple{k2, g};
+        // Move pivots at right place
+        swap(base[rp], base[g + 1]);
+        swap(base[lp], base[k2 - 1]);
+
+        return std::tuple{k2 - 1, g + 1};
     }
 
     template <typename NumPivot, typename RandomBaseIt, typename Compare>
     void _seq_multiway_qsort_inner(NumPivot pivot_num, RandomBaseIt base, long lp, long rp,
-                                   Compare& comp) {
-        while (rp - lp > parameters::NO_RECURSION_THRESHOLD) {
+                                   Compare& comp, long depth) {
+        while (rp - lp > parameters::NO_RECURSION_THRESHOLD && depth > 0) {
             auto [index_p1, index_p2] = _seq_multiway_partition_two_pivots(base, lp, rp, comp);
-
-            PRINT_ITERS(base, lp, rp, "After partitioning seq multiway");
-
-            _seq_multiway_qsort_inner(pivot_num, base, lp, index_p1 - 1, comp);
-            _seq_multiway_qsort_inner(pivot_num, base, index_p1, index_p2, comp);
+            _seq_multiway_qsort_inner(pivot_num, base, lp, index_p1 - 1, comp, depth - 1);
+            _seq_multiway_qsort_inner(pivot_num, base, index_p1 + 1, index_p2 - 1, comp, depth - 1);
             lp = index_p2 + 1;
         }
 
-        if (lp >= rp) return;
-        // std::sort(base + lp, base + rp + 1, comp);
-
-        PRINT_ITERS(base, lp, rp, "Before heap insert sort");
         helpers::_heap_insertion_sort(base, lp, rp, comp);
-        PRINT_ITERS(base, lp, rp, "After heap insert sort");
     }
 
     template <typename NumPivot, typename RandomIt,
@@ -364,11 +363,7 @@ namespace mpqsort::impl {
                              Compare comp = Compare()) {
         if (last - first <= 1) return;
 
-        PRINT_ITERS(first, 0, last - first - 1, "START");
-
-        _seq_multiway_qsort_inner(pivot_num, first, 0, last - first - 1, comp);
-
-        PRINT_ITERS(first, 0, last - first - 1, "END");
+        _seq_multiway_qsort_inner(pivot_num, first, 0, last - first - 1, comp, std::log(last - first)/std::log(3));
     }
 
     // PAR
