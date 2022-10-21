@@ -214,14 +214,15 @@ struct RotatedOrderVectorFixture : public RandomVectorFixture<T, Size, From, To>
 
 // Helps to find out threshold when to switch to sequential algorithm
 #define small_sizes_threshold small_size_threshold
-#define register_bench_small_size_threshold(name)                                       \
-    register_bench_int_random(name, small_size_threshold##_##50000, 50000, -1, -1);     \
-    register_bench_int_random(name, small_size_threshold##_##100000, 100000, -1, -1);   \
-    register_bench_int_random(name, small_size_threshold##_##200000, 200000, -1, -1);   \
-    register_bench_int_random(name, small_size_threshold##_##300000, 300000, -1, -1);   \
-    register_bench_int_random(name, small_size_threshold##_##400000, 400000, -1, -1);   \
-    register_bench_int_random(name, small_size_threshold##_##500000, 500000, -1, -1);   \
-    register_bench_int_random(name, small_size_threshold##_##1000000, 1000000, -1, -1); \
+#define register_bench_small_size_threshold(name)                                         \
+    register_bench_int_random(name, small_size_threshold##_##50000, 50000, -1, -1);       \
+    register_bench_int_random(name, small_size_threshold##_##100000, 100000, -1, -1);     \
+    register_bench_int_random(name, small_size_threshold##_##200000, 200000, -1, -1);     \
+    register_bench_int_random(name, small_size_threshold##_##300000, 300000, -1, -1);     \
+    register_bench_int_random(name, small_size_threshold##_##400000, 400000, -1, -1);     \
+    register_bench_int_random(name, small_size_threshold##_##500000, 500000, -1, -1);     \
+    register_bench_int_random(name, small_size_threshold##_##1000000, 1000000, -1, -1);   \
+    register_bench_int_random(name, small_size_threshold##_##10000000, 10000000, -1, -1); \
     register_bench_int_random(name, small_size_threshold##_##10000000, 10000000, -1, -1);
 
 // Run std sort benchmarks

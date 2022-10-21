@@ -2,6 +2,7 @@
 
 #include <omp.h>
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <execution>
@@ -136,7 +137,7 @@ namespace mpqsort::parameters {
      * prevent false sharing between threads. The value is in bytes.
      */
     // static size_t CACHELINE_SIZE = 64;
-    static size_t SEQ_THRESHOLD = 1 << 17;    // based on benchmarks
+    static size_t SEQ_THRESHOLD = 1 << 17;     // based on benchmarks
     static long NO_RECURSION_THRESHOLD = 128;  // based on benchmarks
     /**
      * @brief Maximum supported number of pivots by MPQsort
@@ -230,8 +231,7 @@ namespace mpqsort::helpers {
             auto el = base[i];
             auto j = i - 1;
 
-            while (j >= lp && comp(el, base[j]))
-            {
+            while (j >= lp && comp(el, base[j])) {
                 base[j + 1] = base[j];
                 --j;
             }
@@ -263,8 +263,7 @@ namespace mpqsort::helpers {
         _unguarded_insertion_sort(base, lp + 1, rp, comp);
     }
 
-    template <long NumPivot>
-    inline auto _get_pivots_indexes(long lp, long rp) {
+    template <long NumPivot> inline auto _get_pivots_indexes(long lp, long rp) {
         using std::swap;
         static_assert(NumPivot <= parameters::MAX_NUMBER_OF_PIVOTS);
 
@@ -277,7 +276,7 @@ namespace mpqsort::helpers {
             auto idx1 = dist(en);
             auto idx2 = dist(en);
 
-            while (idx1 == idx2) idx2 = dist(en); // Generate distinct pivot indexes
+            while (idx1 == idx2) idx2 = dist(en);  // Generate distinct pivot indexes
 
             return std::tuple{idx1, idx2};
         }
@@ -363,7 +362,8 @@ namespace mpqsort::impl {
                              Compare comp = Compare()) {
         if (last - first <= 1) return;
 
-        _seq_multiway_qsort_inner(pivot_num, first, 0, last - first - 1, comp, std::log(last - first)/std::log(3));
+        _seq_multiway_qsort_inner(pivot_num, first, 0, last - first - 1, comp,
+                                  1.5 * std::log(last - first) / std::log(3));
     }
 
     // PAR
