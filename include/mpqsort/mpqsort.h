@@ -295,6 +295,7 @@ namespace mpqsort::impl {
         using std::swap;
 
         // Get pivots
+        // TODO: Try with better pivot selection so that 3 segments are almost equal in a size
         auto [idx1, idx2] = helpers::_get_pivots_indexes<2>(lp + 1, rp - 1);
 
         if (comp(base[idx1], base[idx2])) {
@@ -367,6 +368,7 @@ namespace mpqsort::impl {
     auto _par_multiway_partition(NumPivot pivot_num, RandomBaseIt base, size_t lp, size_t rp,
                                  Compare& comp) {
         // TODO: when multiple pivots supported
+        // WIT
         UNUSED(pivot_num);
         using std::swap;
 
