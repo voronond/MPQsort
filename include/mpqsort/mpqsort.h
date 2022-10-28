@@ -137,7 +137,7 @@ namespace mpqsort::parameters {
      * prevent false sharing between threads. The value is in bytes.
      */
     // static size_t CACHELINE_SIZE = 64;
-    static size_t SEQ_THRESHOLD = 1 << 17;     // based on benchmarks
+    static size_t SEQ_THRESHOLD = 1 << 17;
     static long NO_RECURSION_THRESHOLD = 128;  // based on benchmarks
     /**
      * @brief Maximum supported number of pivots by MPQsort
@@ -244,8 +244,6 @@ namespace mpqsort::helpers {
         }
     }
 
-    // Implementation based on
-    // https://github.com/CppCon/CppCon2019/blob/master/Presentations/speed_is_found_in_the_minds_of_people/speed_is_found_in_the_minds_of_people__andrei_alexandrescu__cppcon_2019.pdf
     template <typename RandomBaseIt, typename Compare>
     inline void _heap_insertion_sort(RandomBaseIt base, long lp, long rp, Compare& comp) {
         using std::swap;
@@ -257,8 +255,6 @@ namespace mpqsort::helpers {
             return;
         }
 
-        // needs number of elements not index of the last one
-        // Partially sort array for effective unbound inser sort
         _make_heap(base + lp, size + 1, comp);
         _unguarded_insertion_sort(base, lp + 1, rp, comp);
     }

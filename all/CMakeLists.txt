@@ -13,6 +13,3 @@ enable_testing()
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../test ${CMAKE_BINARY_DIR}/test)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../documentation ${CMAKE_BINARY_DIR}/documentation)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../benchmark ${CMAKE_BINARY_DIR}/benchmark)
-add_subdirectory(
-    ${CMAKE_CURRENT_LIST_DIR}/../tools/input_generator ${CMAKE_BINARY_DIR}/tools/input_generator
-)
