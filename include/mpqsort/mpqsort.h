@@ -318,7 +318,7 @@ namespace mpqsort::impl {
             } else {
                 if (!comp(base[k], p2)) {
                     while (k < g
-                           && comp(p2, base[g]))  // Not the same comparison! Should be k <= g?
+                           && comp(p2, base[g]))
                         --g;
 
                     if (!comp(base[g], p1)) {
