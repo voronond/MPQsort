@@ -188,6 +188,14 @@ namespace mpqsort::helpers {
         base[third] = tmp;
     }
 
+    template <typename RandomBaseIt, typename Index>
+    inline void _cyclic_shift_right(RandomBaseIt base, Index first, Index second, Index third) {
+        auto tmp = base[third];
+        base[third] = base[second];
+        base[second] = base[first];
+        base[first] = tmp;
+    }
+
     template <typename RandomBaseIt, typename Compare>
     inline void _push_heap(RandomBaseIt base, long size, Compare& comp) {
         for (auto i = size - 1;;) {
@@ -269,13 +277,13 @@ namespace mpqsort::helpers {
     inline auto _get_pivots_indexes_two(long lp, long rp) {
         auto size = rp - lp + 1;
 
-        return std::tuple{size * 1/3 + lp, size * 2/3 + lp};
+        return std::tuple{size * 1 / 3 + lp, size * 2 / 3 + lp};
     }
 
     inline auto _get_pivot_indexes_three(long lp, long rp) {
         auto size = rp - lp + 1;
 
-        return std::tuple{size * 1/4 + lp, size * 2/4 + lp, size * 3/4 + lp};
+        return std::tuple{size * 1 / 4 + lp, size * 2 / 4 + lp, size * 3 / 4 + lp};
     }
 
 }  // namespace mpqsort::helpers
@@ -306,7 +314,7 @@ namespace mpqsort::impl {
             swap(base[rp], base[idx1]);
         }
 
-        auto p1 = base[lp], p2 = base[rp];
+        const auto p1 = base[lp], p2 = base[rp];
 
         // Set boundaries
         auto k2 = lp + 1, k = k2, g = rp - 1;
@@ -317,9 +325,7 @@ namespace mpqsort::impl {
                 ++k2;
             } else {
                 if (!comp(base[k], p2)) {
-                    while (k < g
-                           && comp(p2, base[g]))
-                        --g;
+                    while (k < g && comp(p2, base[g])) --g;
 
                     if (!comp(base[g], p1)) {
                         swap(base[k], base[g]);
@@ -342,11 +348,12 @@ namespace mpqsort::impl {
 
     template <typename NumPivot, typename RandomBaseIt, typename Compare>
     void _seq_multiway_qsort_inner_ybb(NumPivot pivot_num, RandomBaseIt base, long lp, long rp,
-                                   Compare& comp, long depth) {
+                                       Compare& comp, long depth) {
         while (rp - lp > parameters::NO_RECURSION_THRESHOLD && depth > 0) {
             auto [index_p1, index_p2] = _seq_multiway_partition_two_pivots(base, lp, rp, comp);
             _seq_multiway_qsort_inner_ybb(pivot_num, base, lp, index_p1 - 1, comp, depth - 1);
-            _seq_multiway_qsort_inner_ybb(pivot_num, base, index_p1 + 1, index_p2 - 1, comp, depth - 1);
+            _seq_multiway_qsort_inner_ybb(pivot_num, base, index_p1 + 1, index_p2 - 1, comp,
+                                          depth - 1);
             lp = index_p2 + 1;
         }
 
@@ -354,8 +361,8 @@ namespace mpqsort::impl {
     }
 
     template <typename RandomBaseIt, typename Compare>
-    inline auto _seq_multiway_partition_three_pivots(RandomBaseIt base, long lp, long rp,
-                                                   Compare& comp) {
+    inline auto _seq_multiway_partition_three_pivots(RandomBaseIt base, const long lp,
+                                                     const long rp, Compare& comp) {
         // Use optimal swap method
         using std::swap;
 
@@ -378,17 +385,17 @@ namespace mpqsort::impl {
         k2 = k = lp + 2;
         g = g2 = rp - 1;
 
-        auto p1 = base[lp], p2 = base[lp + 1], p3 = base[rp];
+        const auto p1 = base[lp], p2 = base[lp + 1], p3 = base[rp];
 
         while (k <= g) {
-            while (comp(base[k], p2) && k <= g) {
+            while (k <= g && comp(base[k], p2)) {
                 if (comp(base[k], p1)) {
                     swap(base[k2], base[k]);
                     ++k2;
                 }
                 ++k;
             }
-            while (comp(p2, base[g]) && k <= g) {
+            while (k <= g && comp(p2, base[g])) {
                 if (comp(p3, base[g])) {
                     swap(base[g], base[g2]);
                     --g2;
@@ -398,25 +405,20 @@ namespace mpqsort::impl {
             if (k <= g) {
                 if (comp(p3, base[k])) {
                     if (comp(base[g], p1)) {
-                        swap(base[k], base[k2]);
-                        swap(base[k2], base[g]);
+                        helpers::_cyclic_shift_right(base, k2, k, g);
+                        swap(base[g], base[g2]);
                         ++k2;
+                    } else {
+                        helpers::_cyclic_shift_left(base, k, g, g2);
                     }
-                    else {
-                        swap(base[k], base[g]);
-                    }
-                    swap(base[g], base[g2]);
                     ++k;
                     --g;
                     --g2;
-                }
-                else {
+                } else {
                     if (comp(base[g], p1)) {
-                        swap(base[k], base[k2]);
-                        swap(base[k2], base[g]);
+                        helpers::_cyclic_shift_right(base, k2, k, g);
                         ++k2;
-                    }
-                    else {
+                    } else {
                         swap(base[k], base[g]);
                     }
                     ++k;
@@ -441,12 +443,15 @@ namespace mpqsort::impl {
 
     template <typename NumPivot, typename RandomBaseIt, typename Compare>
     void _seq_multiway_qsort_inner_waterloo(NumPivot pivot_num, RandomBaseIt base, long lp, long rp,
-                                   Compare& comp, long depth) {
+                                            Compare& comp, long depth) {
         while (rp - lp > parameters::NO_RECURSION_THRESHOLD && depth > 0) {
-            auto [index_p1, index_p2, index_p3] = _seq_multiway_partition_three_pivots(base, lp, rp, comp);
+            auto [index_p1, index_p2, index_p3]
+                = _seq_multiway_partition_three_pivots(base, lp, rp, comp);
             _seq_multiway_qsort_inner_waterloo(pivot_num, base, lp, index_p1 - 1, comp, depth - 1);
-            _seq_multiway_qsort_inner_waterloo(pivot_num, base, index_p1 + 1, index_p2 - 1, comp, depth - 1);
-            _seq_multiway_qsort_inner_waterloo(pivot_num, base, index_p2 + 1, index_p3 - 1, comp, depth - 1);
+            _seq_multiway_qsort_inner_waterloo(pivot_num, base, index_p1 + 1, index_p2 - 1, comp,
+                                               depth - 1);
+            _seq_multiway_qsort_inner_waterloo(pivot_num, base, index_p2 + 1, index_p3 - 1, comp,
+                                               depth - 1);
             lp = index_p3 + 1;
         }
 
@@ -462,13 +467,11 @@ namespace mpqsort::impl {
         // TODO: Remove one pivot algorithm
         if (pivot_num == 2 || pivot_num == 1) {
             _seq_multiway_qsort_inner_ybb(pivot_num, first, 0, last - first - 1, comp,
-                                  1.5 * std::log(last - first) / std::log(3));
-        }
-        else if (pivot_num == 3) {
+                                          1.5 * std::log(last - first) / std::log(3));
+        } else if (pivot_num == 3) {
             _seq_multiway_qsort_inner_waterloo(pivot_num, first, 0, last - first - 1, comp,
                                                1.5 * std::log(last - first) / std::log(4));
-        }
-        else {
+        } else {
             throw std::invalid_argument("Unknown number of pivots, this should never happen");
         }
     }
