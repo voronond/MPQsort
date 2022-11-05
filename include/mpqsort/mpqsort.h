@@ -259,23 +259,16 @@ namespace mpqsort::helpers {
         _unguarded_insertion_sort(base, lp + 1, rp, comp);
     }
 
-    template <long NumPivot> inline auto _get_pivots_indexes(long lp, long rp) {
-        using std::swap;
-        static_assert(NumPivot <= parameters::MAX_NUMBER_OF_PIVOTS);
+    inline auto _get_pivots_indexes_two(long lp, long rp) {
+        auto size = rp - lp + 1;
 
-        static std::mt19937 en(0);
-        std::uniform_int_distribution<long> dist(lp, rp);
+        return std::tuple{size * 1/3 + lp, size * 2/3 + lp};
+    }
 
-        if constexpr (NumPivot == 1) {
-            return dist(en);
-        } else if constexpr (NumPivot == 2) {
-            auto idx1 = dist(en);
-            auto idx2 = dist(en);
+    inline auto _get_pivot_indexes_three(long lp, long rp) {
+        auto size = rp - lp + 1;
 
-            while (idx1 == idx2) idx2 = dist(en);  // Generate distinct pivot indexes
-
-            return std::tuple{idx1, idx2};
-        }
+        return std::tuple{size * 1/4 + lp, size * 2/4 + lp, size * 3/4 + lp};
     }
 
 }  // namespace mpqsort::helpers
@@ -296,7 +289,7 @@ namespace mpqsort::impl {
 
         // Get pivots
         // TODO: Try with better pivot selection so that 3 segments are almost equal in a size
-        auto [idx1, idx2] = helpers::_get_pivots_indexes<2>(lp + 1, rp - 1);
+        auto [idx1, idx2] = helpers::_get_pivots_indexes_two(lp + 1, rp - 1);
 
         if (comp(base[idx1], base[idx2])) {
             swap(base[lp], base[idx1]);
@@ -341,12 +334,12 @@ namespace mpqsort::impl {
     }
 
     template <typename NumPivot, typename RandomBaseIt, typename Compare>
-    void _seq_multiway_qsort_inner(NumPivot pivot_num, RandomBaseIt base, long lp, long rp,
+    void _seq_multiway_qsort_inner_ybb(NumPivot pivot_num, RandomBaseIt base, long lp, long rp,
                                    Compare& comp, long depth) {
         while (rp - lp > parameters::NO_RECURSION_THRESHOLD && depth > 0) {
             auto [index_p1, index_p2] = _seq_multiway_partition_two_pivots(base, lp, rp, comp);
-            _seq_multiway_qsort_inner(pivot_num, base, lp, index_p1 - 1, comp, depth - 1);
-            _seq_multiway_qsort_inner(pivot_num, base, index_p1 + 1, index_p2 - 1, comp, depth - 1);
+            _seq_multiway_qsort_inner_ybb(pivot_num, base, lp, index_p1 - 1, comp, depth - 1);
+            _seq_multiway_qsort_inner_ybb(pivot_num, base, index_p1 + 1, index_p2 - 1, comp, depth - 1);
             lp = index_p2 + 1;
         }
 
@@ -359,7 +352,7 @@ namespace mpqsort::impl {
                              Compare comp = Compare()) {
         if (last - first <= 1) return;
 
-        _seq_multiway_qsort_inner(pivot_num, first, 0, last - first - 1, comp,
+        _seq_multiway_qsort_inner_ybb(pivot_num, first, 0, last - first - 1, comp,
                                   1.5 * std::log(last - first) / std::log(3));
     }
 
