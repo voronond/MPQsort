@@ -37,7 +37,8 @@ CATCH_REGISTER_TAG_ALIAS("[@sort_all]", TAG.SORT_ALL.c_str());
 using ALLOWED_EXECUTION_POLICIES
     = std::tuple<decltype(execution::par_three_way), decltype(execution::par_max_way),
                  decltype(execution::par), decltype(execution::seq_three_way),
-                 decltype(execution::seq_max_way), decltype(execution::seq)>;
+                 decltype(execution::seq_four_way), decltype(execution::seq_max_way),
+                 decltype(execution::seq)>;
 
 // Declare parallel execution policies
 using PARALLEL_EXECUTION_POLICIES
@@ -46,8 +47,8 @@ using PARALLEL_EXECUTION_POLICIES
 
 // Declare sequential execution policies
 using SEQUENTIAL_EXECUTION_POLICIES
-    = std::tuple<decltype(execution::seq_three_way), decltype(execution::seq_max_way),
-                 decltype(execution::seq)>;
+    = std::tuple<decltype(execution::seq_three_way), decltype(execution::seq_four_way),
+                 decltype(execution::seq_max_way), decltype(execution::seq)>;
 
 // Some disallowed execution policies
 using DISALLOWED_EXECUTION_POLICIES
@@ -58,7 +59,7 @@ using DISALLOWED_EXECUTION_POLICIES
 TEST_CASE("Not a test case, just setup!") {
     // Turn off optimization for small arrays
     mpqsort::parameters::SEQ_THRESHOLD = 0;
-    mpqsort::parameters::NO_RECURSION_THRESHOLD = 5;
+    mpqsort::parameters::NO_RECURSION_THRESHOLD = 6;
 }
 // TEST CASES
 
@@ -384,7 +385,14 @@ TEST_CASE("Specific problematic input", TAG.SORT_ALL) {
     auto test_vector = std::vector<int>{6, 6, 7, 6, 5, 2, 2};
     auto test_vector_res = test_vector;
 
-    mpqsort::sort(mpqsort::execution::seq_three_way, test_vector.begin(), test_vector.end());
+    SECTION("Seq three way") {
+        mpqsort::sort(mpqsort::execution::seq_three_way, test_vector.begin(), test_vector.end());
+    }
+
+    SECTION("Seq four way") {
+        mpqsort::sort(mpqsort::execution::seq_four_way, test_vector.begin(), test_vector.end());
+    }
+
     std::sort(test_vector_res.begin(), test_vector_res.end());
 
     REQUIRE_THAT(test_vector, Catch::Equals(test_vector_res));
