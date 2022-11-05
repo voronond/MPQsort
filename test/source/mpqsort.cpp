@@ -29,9 +29,9 @@ struct _TAG {
 } TAG;
 
 // Combine tags and create alias for catch2 (supports only C strings)
-CATCH_REGISTER_TAG_ALIAS("[@seq_all]", TAG.SEQ_ALL.c_str());
-CATCH_REGISTER_TAG_ALIAS("[@par_all]", TAG.PAR_ALL.c_str());
-CATCH_REGISTER_TAG_ALIAS("[@sort_all]", TAG.SORT_ALL.c_str());
+CATCH_REGISTER_TAG_ALIAS("[@seq_all]", TAG.SEQ_ALL.c_str())
+CATCH_REGISTER_TAG_ALIAS("[@par_all]", TAG.PAR_ALL.c_str())
+CATCH_REGISTER_TAG_ALIAS("[@sort_all]", TAG.SORT_ALL.c_str())
 
 // Declare allowed execution policies
 using ALLOWED_EXECUTION_POLICIES
