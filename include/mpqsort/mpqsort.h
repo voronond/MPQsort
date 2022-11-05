@@ -196,6 +196,15 @@ namespace mpqsort::helpers {
         base[first] = tmp;
     }
 
+    template <typename RandomBaseIt, typename Index>
+    inline void _cyclic_shift_right(RandomBaseIt base, Index first, Index second, Index third, Index forth) {
+        auto tmp = base[forth];
+        base[forth] = base[third];
+        base[third] = base[second];
+        base[second] = base[first];
+        base[first] = tmp;
+    }
+
     template <typename RandomBaseIt, typename Compare>
     inline void _push_heap(RandomBaseIt base, long size, Compare& comp) {
         for (auto i = size - 1;;) {
@@ -405,8 +414,7 @@ namespace mpqsort::impl {
             if (k <= g) {
                 if (comp(p3, base[k])) {
                     if (comp(base[g], p1)) {
-                        helpers::_cyclic_shift_right(base, k2, k, g);
-                        swap(base[g], base[g2]);
+                        helpers::_cyclic_shift_right(base, k2, k, g2, g);
                         ++k2;
                     } else {
                         helpers::_cyclic_shift_left(base, k, g, g2);
