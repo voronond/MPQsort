@@ -374,71 +374,69 @@ namespace mpqsort::impl {
         swap(base[idx3], base[rp]);
 
         // Indexes
-        // TODO: Rename to k2, k and g
-        long a, b, c, d;
-        a = b = lp + 2;
-        c = d = rp - 1;
+        long k2, k, g, g2;
+        k2 = k = lp + 2;
+        g = g2 = rp - 1;
 
-        // Pivots TODO: rename them
-        auto p = base[lp], q = base[lp + 1], r = base[rp];
+        auto p1 = base[lp], p2 = base[lp + 1], p3 = base[rp];
 
-        while (b <= c) {
-            while (comp(base[b], q) && b <= c) {
-                if (comp(base[b], p)) {
-                    swap(base[a], base[b]);
-                    ++a;
+        while (k <= g) {
+            while (comp(base[k], p2) && k <= g) {
+                if (comp(base[k], p1)) {
+                    swap(base[k2], base[k]);
+                    ++k2;
                 }
-                ++b;
+                ++k;
             }
-            while (comp(q, base[c]) && b <= c) {
-                if (comp(r, base[c])) {
-                    swap(base[c], base[d]);
-                    --d;
+            while (comp(p2, base[g]) && k <= g) {
+                if (comp(p3, base[g])) {
+                    swap(base[g], base[g2]);
+                    --g2;
                 }
-                --c;
+                --g;
             }
-            if (b <= c) {
-                if (comp(r, base[b])) {
-                    if (comp(base[c], p)) {
-                        swap(base[b], base[a]);
-                        swap(base[a], base[c]);
-                        ++a;
+            if (k <= g) {
+                if (comp(p3, base[k])) {
+                    if (comp(base[g], p1)) {
+                        swap(base[k], base[k2]);
+                        swap(base[k2], base[g]);
+                        ++k2;
                     }
                     else {
-                        swap(base[b], base[c]);
+                        swap(base[k], base[g]);
                     }
-                    swap(base[c], base[d]);
-                    ++b;
-                    --c;
-                    --d;
+                    swap(base[g], base[g2]);
+                    ++k;
+                    --g;
+                    --g2;
                 }
                 else {
-                    if (comp(base[c], p)) {
-                        swap(base[b], base[a]);
-                        swap(base[a], base[c]);
-                        ++a;
+                    if (comp(base[g], p1)) {
+                        swap(base[k], base[k2]);
+                        swap(base[k2], base[g]);
+                        ++k2;
                     }
                     else {
-                        swap(base[b], base[c]);
+                        swap(base[k], base[g]);
                     }
-                    ++b;
-                    --c;
+                    ++k;
+                    --g;
                 }
             }
         }
 
-        --a;
-        --b;
-        ++c;
-        ++d;
+        --k2;
+        --k;
+        ++g;
+        ++g2;
 
-        swap(base[lp + 1], base[a]);
-        swap(base[a], base[b]);
-        --a;
-        swap(base[lp], base[a]);
-        swap(base[rp], base[d]);
+        swap(base[lp + 1], base[k2]);
+        swap(base[k2], base[k]);
+        --k2;
+        swap(base[lp], base[k2]);
+        swap(base[rp], base[g2]);
 
-        return std::tuple{a, b, d};
+        return std::tuple{k2, k, g2};
     }
 
     template <typename NumPivot, typename RandomBaseIt, typename Compare>
