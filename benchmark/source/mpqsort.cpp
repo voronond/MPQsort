@@ -302,10 +302,10 @@ register_bench_default(mpqsort_par_sort);
 register_bench_small_sizes(mpqsort_par_sort);
 register_bench_small_values_range(mpqsort_par_sort);
 
-// Run mpqsort sequential multiway benchmarks
-#define mpqsort_seq_sort(dataType, bench, type, size, from, to)                                \
+// Run mpqsort sequential three way benchmarks
+#define mpqsort_seq_three_way_sort(dataType, bench, type, size, from, to)                                \
     BENCHMARK_TEMPLATE_DEFINE_F(dataType##VectorFixture,                                       \
-                                BM_mpqsort_seq_sort_##dataType##_##type##_##bench, type, size, \
+                                BM_mpqsort_seq_three_way_sort_##dataType##_##type##_##bench, type, size, \
                                 from, to)                                                      \
     (benchmark::State & state) {                                                               \
         for (auto _ : state) {                                                                 \
@@ -319,14 +319,40 @@ register_bench_small_values_range(mpqsort_par_sort);
         }                                                                                      \
     }                                                                                          \
     BENCHMARK_REGISTER_F(dataType##VectorFixture,                                              \
-                         BM_mpqsort_seq_sort_##dataType##_##type##_##bench)                    \
+                         BM_mpqsort_seq_three_way_sort_##dataType##_##type##_##bench)                    \
         ->MeasureProcessCPUTime()                                                              \
         ->UseRealTime()                                                                        \
-        ->Name(str(BM_mpqsort_seq_sort_##dataType##_##type##_##bench));
+        ->Name(str(BM_mpqsort_seq_three_way_sort_##dataType##_##type##_##bench));
 
-register_bench_default(mpqsort_seq_sort);
-register_bench_small_sizes(mpqsort_seq_sort);
-register_bench_small_values_range(mpqsort_seq_sort);
+register_bench_default(mpqsort_seq_three_way_sort);
+register_bench_small_sizes(mpqsort_seq_three_way_sort);
+register_bench_small_values_range(mpqsort_seq_three_way_sort);
+
+// Run mpqsort sequential four way benchmarks
+#define mpqsort_seq_four_way_sort(dataType, bench, type, size, from, to)                                \
+    BENCHMARK_TEMPLATE_DEFINE_F(dataType##VectorFixture,                                       \
+                                BM_mpqsort_seq_four_way_sort_##dataType##_##type##_##bench, type, size, \
+                                from, to)                                                      \
+    (benchmark::State & state) {                                                               \
+        for (auto _ : state) {                                                                 \
+            state.PauseTiming();                                                               \
+            Prepare();                                                                         \
+            state.ResumeTiming();                                                              \
+            mpqsort::sort(mpqsort::execution::seq_four_way, vec.begin(), vec.end());          \
+            state.PauseTiming();                                                               \
+            Destroy();                                                                         \
+            state.ResumeTiming();                                                              \
+        }                                                                                      \
+    }                                                                                          \
+    BENCHMARK_REGISTER_F(dataType##VectorFixture,                                              \
+                         BM_mpqsort_seq_four_way_sort_##dataType##_##type##_##bench)                    \
+        ->MeasureProcessCPUTime()                                                              \
+        ->UseRealTime()                                                                        \
+        ->Name(str(BM_mpqsort_seq_four_way_sort_##dataType##_##type##_##bench));
+
+register_bench_default(mpqsort_seq_four_way_sort);
+register_bench_small_sizes(mpqsort_seq_four_way_sort);
+register_bench_small_values_range(mpqsort_seq_four_way_sort);
 
 // Run gnu qs sort benchmarks
 // In-place parallel qsort
@@ -454,5 +480,6 @@ register_bench_default(nvidia_thrust_sort);
 register_bench_small_sizes(nvidia_thrust_sort);
 
 register_bench_small_size_threshold(std_sort);
-register_bench_small_size_threshold(mpqsort_seq_sort)
+register_bench_small_size_threshold(mpqsort_seq_three_way_sort)
+register_bench_small_size_threshold(mpqsort_seq_four_way_sort)
     register_bench_small_size_threshold(mpqsort_par_sort)
