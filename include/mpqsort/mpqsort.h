@@ -152,6 +152,12 @@ namespace mpqsort::parameters {
      * changed by the user.
      */
     const static long MAX_NUMBER_OF_PIVOTS = 3;  // can't be changed during runtime
+
+    /**
+     * @brief Number of elements to chose a pivot from
+     * Determined hos many elements from an input array we want to consider to chose one pivot
+     */
+    const static long ONE_PIVOT_SAMPLE_SIZE = 30;
 }  // namespace mpqsort::parameters
 
 namespace mpqsort::helpers {
@@ -283,16 +289,55 @@ namespace mpqsort::helpers {
         _unguarded_insertion_sort(base, lp + 1, rp, comp);
     }
 
-    inline auto _get_pivots_indexes_two(long lp, long rp) {
+    template<typename RandomBaseIt, typename Comparator>
+    inline auto _get_pivots_indexes_two(RandomBaseIt base, long lp, long rp, Comparator& comp) {
         auto size = rp - lp + 1;
+        const auto sample_size = parameters::ONE_PIVOT_SAMPLE_SIZE * 2;
+        std::vector<std::pair<typename std::iterator_traits<RandomBaseIt>::value_type, long>> samples;
+        samples.reserve(sample_size);
 
-        return std::tuple{size * 1 / 3 + lp, size * 2 / 3 + lp};
+        // If not enough elements for sampling
+        if (size < sample_size) {
+            return std::tuple{size * 1 / 3 + lp, size * 2 / 3 + lp};
+        } else {
+            // Get sample elements
+            for (long i = 0; i < sample_size; ++i) {
+                auto index = size * i/sample_size + lp;
+                samples[i] = std::make_pair(base[index], index);
+            }
+
+            // Sort samples based on provided comp
+            std::sort(samples.begin(), samples.end(), [&](auto& a, auto& b){ return comp(a.first, b.first); });
+
+            return std::tuple{samples[sample_size * 1 / 3].second, samples[sample_size * 2 / 3].second};
+
+        }
     }
 
-    inline auto _get_pivot_indexes_three(long lp, long rp) {
+    template<typename RandomBaseIt, typename Comparator>
+    inline auto _get_pivot_indexes_three(RandomBaseIt base, long lp, long rp, Comparator& comp) {
         auto size = rp - lp + 1;
+        const auto sample_size = parameters::ONE_PIVOT_SAMPLE_SIZE * 3;
+        std::vector<std::pair<typename std::iterator_traits<RandomBaseIt>::value_type, long>> samples;
+        samples.reserve(sample_size);
 
-        return std::tuple{size * 1 / 4 + lp, size * 2 / 4 + lp, size * 3 / 4 + lp};
+        // If not enough elements for sampling
+        if (size < sample_size) {
+            return std::tuple{size * 1 / 4 + lp, size * 2 / 4 + lp, size * 3 / 4 + lp};
+        }
+        else {
+            // Get sample elements
+            for (long i = 0; i < sample_size; ++i) {
+                auto index = size * i/sample_size + lp;
+                samples[i] = std::make_pair(base[index], index);
+            }
+
+            // Sort samples based on provided comp
+            std::sort(samples.begin(), samples.end(), [&](auto& a, auto& b){ return comp(a.first, b.first); });
+
+            return std::tuple{samples[sample_size * 1 / 4].second, samples[sample_size * 2 / 4].second,
+                              samples[sample_size * 3 / 4].second};
+        }
     }
 
 }  // namespace mpqsort::helpers
@@ -312,8 +357,7 @@ namespace mpqsort::impl {
         using std::swap;
 
         // Get pivots
-        // TODO: Try with better pivot selection so that 3 segments are almost equal in a size
-        auto [idx1, idx2] = helpers::_get_pivots_indexes_two(lp + 1, rp - 1);
+        auto [idx1, idx2] = helpers::_get_pivots_indexes_two(base, lp + 1, rp - 1, comp);
 
         if (comp(base[idx1], base[idx2])) {
             swap(base[lp], base[idx1]);
@@ -376,8 +420,7 @@ namespace mpqsort::impl {
         using std::swap;
 
         // Get pivots
-        // TODO: Try with better pivot selection so that 3 segments are almost equal in a size
-        auto [idx1, idx2, idx3] = helpers::_get_pivot_indexes_three(lp + 2, rp - 1);
+        auto [idx1, idx2, idx3] = helpers::_get_pivot_indexes_three(base, lp + 2, rp - 1, comp);
 
         // Sort pivots
         if (comp(base[idx2], base[idx1])) swap(base[idx1], base[idx2]);
