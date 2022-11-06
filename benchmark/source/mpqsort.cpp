@@ -45,7 +45,7 @@ template <typename T, long Size = -1, int From = -1, int To = -1> struct VectorF
     auto VectorSizeToFillHalfMemory() const {
 #ifdef TESTING
         // return 100000000;
-        return 1000000;
+        return 10000000;
         // return 8 * 1024 * 1024 * (1024 / sizeof(double));
 #else
         auto pages = sysconf(_SC_PHYS_PAGES);

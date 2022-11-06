@@ -157,7 +157,7 @@ namespace mpqsort::parameters {
      * @brief Number of elements to chose a pivot from
      * Determined hos many elements from an input array we want to consider to chose one pivot
      */
-    const static long ONE_PIVOT_SAMPLE_SIZE = 30;
+    const static long ONE_PIVOT_SAMPLE_SIZE = 20;
 }  // namespace mpqsort::parameters
 
 namespace mpqsort::helpers {
