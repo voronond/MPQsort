@@ -66,17 +66,6 @@ template <typename T, long Size = -1, int From = -1, int To = -1> struct VectorF
 #endif
     }
 
-    template <typename Dist> void InitVector(Dist& dist) {
-#pragma omp parallel shared(dist, vec)
-        {
-            auto tid = omp_get_thread_num();
-#pragma omp for schedule(static)
-            for (size_t i = 0; i < vec.size(); ++i) {
-                vec[i] = dist[tid]();
-            }
-        }
-    }
-
     std::vector<T> vec;
     T const from, to;
 };
@@ -93,18 +82,30 @@ struct RandomVectorFixture : public VectorFixture<T, Size, From, To> {
         // Seed with a same value so that sort same sequences across runs
         std::vector<std::mt19937> ens;
         auto seed = Seed;
-        for (int i = 0; i < omp_get_num_procs(); ++i) ens.emplace_back(std::mt19937(seed++));
+        for (int i = 0; i < omp_get_max_threads(); ++i) ens.emplace_back(std::mt19937(seed++));
 
         if constexpr (std::is_integral_v<T>) {
             std::uniform_int_distribution<T> uniform_dist(this->from, this->to);
-            std::vector<std::function<T()>> distr;
-            for (auto en : ens) distr.emplace_back([&]() { return uniform_dist(en); });
-            this->InitVector(distr);
+
+#pragma omp parallel
+        {
+            auto tid = omp_get_thread_num();
+#pragma omp for schedule(static)
+            for (size_t i = 0; i < this->vec.size(); ++i) {
+                this->vec[i] = uniform_dist(ens[tid]);
+            }
+        }
         } else {
             std::uniform_real_distribution<T> uniform_dist(this->from, this->to);
-            std::vector<std::function<T()>> distr;
-            for (auto en : ens) distr.emplace_back([&]() { return uniform_dist(en); });
-            this->InitVector(distr);
+
+#pragma omp parallel
+        {
+            auto tid = omp_get_thread_num();
+#pragma omp for schedule(static)
+            for (size_t i = 0; i < this->vec.size(); ++i) {
+                this->vec[i] = uniform_dist(ens[tid]);
+            }
+        }
         }
     }
 };
