@@ -203,7 +203,8 @@ namespace mpqsort::helpers {
     }
 
     template <typename RandomBaseIt, typename Index>
-    inline void _cyclic_shift_right(RandomBaseIt base, Index first, Index second, Index third, Index forth) {
+    inline void _cyclic_shift_right(RandomBaseIt base, Index first, Index second, Index third,
+                                    Index forth) {
         auto tmp = base[forth];
         base[forth] = base[third];
         base[third] = base[second];
@@ -289,11 +290,12 @@ namespace mpqsort::helpers {
         _unguarded_insertion_sort(base, lp + 1, rp, comp);
     }
 
-    template<typename RandomBaseIt, typename Comparator>
+    template <typename RandomBaseIt, typename Comparator>
     inline auto _get_pivots_indexes_two(RandomBaseIt base, long lp, long rp, Comparator& comp) {
         auto size = rp - lp + 1;
         const auto sample_size = parameters::ONE_PIVOT_SAMPLE_SIZE * 2;
-        std::vector<std::pair<typename std::iterator_traits<RandomBaseIt>::value_type, long>> samples;
+        std::vector<std::pair<typename std::iterator_traits<RandomBaseIt>::value_type, long>>
+            samples;
         samples.reserve(sample_size);
 
         // If not enough elements for sampling
@@ -302,40 +304,43 @@ namespace mpqsort::helpers {
         } else {
             // Get sample elements
             for (long i = 0; i < sample_size; ++i) {
-                auto index = size * i/sample_size + lp;
+                auto index = size * i / sample_size + lp;
                 samples[i] = std::make_pair(base[index], index);
             }
 
             // Sort samples based on provided comp
-            std::sort(samples.begin(), samples.end(), [&](auto& a, auto& b){ return comp(a.first, b.first); });
+            std::sort(samples.begin(), samples.end(),
+                      [&](auto& a, auto& b) { return comp(a.first, b.first); });
 
-            return std::tuple{samples[sample_size * 1 / 3].second, samples[sample_size * 2 / 3].second};
-
+            return std::tuple{samples[sample_size * 1 / 3].second,
+                              samples[sample_size * 2 / 3].second};
         }
     }
 
-    template<typename RandomBaseIt, typename Comparator>
+    template <typename RandomBaseIt, typename Comparator>
     inline auto _get_pivot_indexes_three(RandomBaseIt base, long lp, long rp, Comparator& comp) {
         auto size = rp - lp + 1;
         const auto sample_size = parameters::ONE_PIVOT_SAMPLE_SIZE * 3;
-        std::vector<std::pair<typename std::iterator_traits<RandomBaseIt>::value_type, long>> samples;
+        std::vector<std::pair<typename std::iterator_traits<RandomBaseIt>::value_type, long>>
+            samples;
         samples.reserve(sample_size);
 
         // If not enough elements for sampling
         if (size < sample_size) {
             return std::tuple{size * 1 / 4 + lp, size * 2 / 4 + lp, size * 3 / 4 + lp};
-        }
-        else {
+        } else {
             // Get sample elements
             for (long i = 0; i < sample_size; ++i) {
-                auto index = size * i/sample_size + lp;
+                auto index = size * i / sample_size + lp;
                 samples[i] = std::make_pair(base[index], index);
             }
 
             // Sort samples based on provided comp
-            std::sort(samples.begin(), samples.end(), [&](auto& a, auto& b){ return comp(a.first, b.first); });
+            std::sort(samples.begin(), samples.end(),
+                      [&](auto& a, auto& b) { return comp(a.first, b.first); });
 
-            return std::tuple{samples[sample_size * 1 / 4].second, samples[sample_size * 2 / 4].second,
+            return std::tuple{samples[sample_size * 1 / 4].second,
+                              samples[sample_size * 2 / 4].second,
                               samples[sample_size * 3 / 4].second};
         }
     }
