@@ -147,11 +147,11 @@ TEST_CASE("Find a segment ID for an element") {
         auto comparator = std::less<int>();
 
         int element = 1;
-        REQUIRE(helpers::_find_element_segment(pivots.begin(), 0, pivots.size() - 1, element, comparator) == 0);
+        REQUIRE(helpers::_find_element_segment_id(pivots.begin(), pivots.size(), element, comparator) == 0);
         element = 3;
-        REQUIRE(helpers::_find_element_segment(pivots.begin(), 0, pivots.size() - 1, element, comparator) == 1);
+        REQUIRE(helpers::_find_element_segment_id(pivots.begin(), pivots.size(), element, comparator) == 1);
         element = 4;
-        REQUIRE(helpers::_find_element_segment(pivots.begin(), 0, pivots.size() - 1, element, comparator) == 1);
+        REQUIRE(helpers::_find_element_segment_id(pivots.begin(), pivots.size(), element, comparator) == 1);
     }
 
     SECTION("Three pivots") {
@@ -159,13 +159,13 @@ TEST_CASE("Find a segment ID for an element") {
         auto comparator = std::less<int>();
 
         int element = 1;
-        REQUIRE(helpers::_find_element_segment(pivots.begin(), 0, pivots.size() - 1, element, comparator) == 0);
+        REQUIRE(helpers::_find_element_segment_id(pivots.begin(), pivots.size(), element, comparator) == 0);
         element = 3;
-        REQUIRE(helpers::_find_element_segment(pivots.begin(), 0, pivots.size() - 1, element, comparator) == 1);
+        REQUIRE(helpers::_find_element_segment_id(pivots.begin(), pivots.size(), element, comparator) == 1);
         element = 7;
-        REQUIRE(helpers::_find_element_segment(pivots.begin(), 0, pivots.size() - 1, element, comparator) == 2);
+        REQUIRE(helpers::_find_element_segment_id(pivots.begin(), pivots.size(), element, comparator) == 2);
         element = 10;
-        REQUIRE(helpers::_find_element_segment(pivots.begin(), 0, pivots.size() - 1, element, comparator) == 3);
+        REQUIRE(helpers::_find_element_segment_id(pivots.begin(), pivots.size(), element, comparator) == 3);
     }
 
     SECTION("Three pivots: two are the same") {
@@ -173,16 +173,24 @@ TEST_CASE("Find a segment ID for an element") {
         auto comparator = std::less<int>();
 
         int element = 1;
-        REQUIRE(helpers::_find_element_segment(pivots.begin(), 0, pivots.size() - 1, element, comparator) == 0);
+        REQUIRE(helpers::_find_element_segment_id(pivots.begin(), pivots.size(), element, comparator) == 0);
         element = 3;
-        REQUIRE(helpers::_find_element_segment(pivots.begin(), 0, pivots.size() - 1, element, comparator) == 1);
+        REQUIRE(helpers::_find_element_segment_id(pivots.begin(), pivots.size(), element, comparator) == 1);
         element = 7;
-        REQUIRE(helpers::_find_element_segment(pivots.begin(), 0, pivots.size() - 1, element, comparator) == 3);
+        REQUIRE(helpers::_find_element_segment_id(pivots.begin(), pivots.size(), element, comparator) == 3);
         // If two or more consequent pivots are the same, there is not any segment in between them
         // In this case, segment id 2 is never used
         element = 6;
-        REQUIRE(helpers::_find_element_segment(pivots.begin(), 0, pivots.size() - 1, element, comparator) == 3);
+        REQUIRE(helpers::_find_element_segment_id(pivots.begin(), pivots.size(), element, comparator) == 3);
     }
+}
+
+TEST_CASE("Test parallel partitioning") {
+    // TODO: Add tests for sorting when implemented
+    std::vector<int> test_vector{10, 9, 8, 7, 6, 5, 4, 3, 2, 1};
+    std::cout << test_vector.size() << std::endl;
+    auto comp = std::less<int>();
+    mpqsort::impl::_par_multiway_partition_second(test_vector.begin(), 0, test_vector.size() - 1, comp);
 }
 
 // Test if all sort prototypes can be called and instantiated (without policies)

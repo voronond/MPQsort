@@ -347,7 +347,8 @@ namespace mpqsort::helpers {
 
     // Number of pivots needs to be 2^k - 1
     template <typename RandomBaseIt, typename Comparator, typename Element>
-    inline auto _find_element_segment(RandomBaseIt base, long lp, long rp, Element& el, Comparator& comp) {
+    inline auto _find_element_segment_id(RandomBaseIt base, long size, Element& el, Comparator& comp) {
+        long lp = 0, rp = size - 1;
         long num_of_comparisons = static_cast<long>(std::log2(lp + rp));
         long idx;
 
@@ -555,6 +556,40 @@ namespace mpqsort::impl {
     }
 
     // PAR
+    template <typename RandomBaseIt, typename Compare>
+    auto _par_multiway_partition_second(RandomBaseIt base, long lp, long rp, Compare& comp) {
+        using std::swap;
+        using ValueType = typename std::iterator_traits<RandomBaseIt>::value_type;
+
+        // Get pivots
+        auto [idx1, idx2, idx3] = helpers::_get_pivot_indexes_three(base, lp + 2, rp - 1, comp);
+
+        // Sort pivots
+        if (comp(base[idx2], base[idx1])) swap(base[idx1], base[idx2]);
+        if (comp(base[idx3], base[idx1])) swap(base[idx1], base[idx3]);
+        if (comp(base[idx3], base[idx2])) swap(base[idx2], base[idx3]);
+
+        // Init pivots
+        std::vector<ValueType> pivots(3);
+        pivots[0] = base[idx1];
+        pivots[1] = base[idx2];
+        pivots[2] = base[idx3];
+
+        // Preallocate map holding semi-processed elements
+        std::vector<std::vector<ValueType>> map(4, std::vector<ValueType>(4));
+
+        // Indexes in blocks
+        std::vector<long> idx(4);
+        auto idx_ptr = idx.data();
+
+        // Find boundaries of segments
+        #pragma omp parallel for reduction(+:idx_ptr[:4])
+        for (long i = lp; i <= rp; ++i) {
+            auto segment_id = helpers::_find_element_segment_id(pivots, pivots.size(), base[i], comp);
+            ++idx_ptr[segment_id];
+        }
+    }
+
     template <typename NumPivot, typename RandomBaseIt, typename Compare>
     auto _par_multiway_partition(NumPivot pivot_num, RandomBaseIt base, size_t lp, size_t rp,
                                  Compare& comp) {
