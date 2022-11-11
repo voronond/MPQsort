@@ -140,6 +140,51 @@ TEMPLATE_LIST_TEST_CASE("Execution policy type trait parallel policies for seque
     REQUIRE_FALSE(execution::is_parallel_execution_policy<TestType&&>::value);
 }
 
+TEST_CASE("Find a segment ID for an element") {
+    // Num of pivots needs to be 2^k - 1
+    SECTION("One pivot") {
+        std::vector<int> pivots{3};
+        auto comparator = std::less<int>();
+
+        int element = 1;
+        REQUIRE(helpers::_find_element_segment(pivots.begin(), 0, pivots.size() - 1, element, comparator) == 0);
+        element = 3;
+        REQUIRE(helpers::_find_element_segment(pivots.begin(), 0, pivots.size() - 1, element, comparator) == 1);
+        element = 4;
+        REQUIRE(helpers::_find_element_segment(pivots.begin(), 0, pivots.size() - 1, element, comparator) == 1);
+    }
+
+    SECTION("Three pivots") {
+        std::vector<int> pivots{3, 6, 9};
+        auto comparator = std::less<int>();
+
+        int element = 1;
+        REQUIRE(helpers::_find_element_segment(pivots.begin(), 0, pivots.size() - 1, element, comparator) == 0);
+        element = 3;
+        REQUIRE(helpers::_find_element_segment(pivots.begin(), 0, pivots.size() - 1, element, comparator) == 1);
+        element = 7;
+        REQUIRE(helpers::_find_element_segment(pivots.begin(), 0, pivots.size() - 1, element, comparator) == 2);
+        element = 10;
+        REQUIRE(helpers::_find_element_segment(pivots.begin(), 0, pivots.size() - 1, element, comparator) == 3);
+    }
+
+    SECTION("Three pivots: two are the same") {
+        std::vector<int> pivots{3, 6, 6};
+        auto comparator = std::less<int>();
+
+        int element = 1;
+        REQUIRE(helpers::_find_element_segment(pivots.begin(), 0, pivots.size() - 1, element, comparator) == 0);
+        element = 3;
+        REQUIRE(helpers::_find_element_segment(pivots.begin(), 0, pivots.size() - 1, element, comparator) == 1);
+        element = 7;
+        REQUIRE(helpers::_find_element_segment(pivots.begin(), 0, pivots.size() - 1, element, comparator) == 3);
+        // If two or more consequent pivots are the same, there is not any segment in between them
+        // In this case, segment id 2 is never used
+        element = 6;
+        REQUIRE(helpers::_find_element_segment(pivots.begin(), 0, pivots.size() - 1, element, comparator) == 3);
+    }
+}
+
 // Test if all sort prototypes can be called and instantiated (without policies)
 TEST_CASE("Instantiation of a sort overloads without policy", TAG.SORT_ALL) {
     std::vector<int> test_vector{2, 1};

@@ -345,6 +345,28 @@ namespace mpqsort::helpers {
         }
     }
 
+    // Number of pivots needs to be 2^k - 1
+    template <typename RandomBaseIt, typename Comparator, typename Element>
+    inline auto _find_element_segment(RandomBaseIt base, long lp, long rp, Element& el, Comparator& comp) {
+        long num_of_comparisons = static_cast<long>(std::log2(lp + rp));
+        long idx;
+
+        for (long i = 0; i < num_of_comparisons; ++i) {
+            idx = (lp + rp) / 2;
+
+            if (comp(el, base[idx])) {
+                rp = idx - 1;
+            }
+            else {
+                lp = idx + 1;
+            }
+        }
+
+        idx = (lp + rp) / 2;
+
+        return comp(el, base[idx]) ? idx : idx + 1;
+    }
+
 }  // namespace mpqsort::helpers
 
 /**
