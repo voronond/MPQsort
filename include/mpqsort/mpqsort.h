@@ -15,7 +15,7 @@
 // TODO: remove after all methods implemented
 #define UNUSED(x) (void)(x)
 // TODO: Remove when done
-//#define DEBUG
+#define DEBUG
 
 #ifdef DEBUG
 #    define PRINT_ITERS(base, lp, rp, msg) mpqsort::helpers::print(base, lp, rp, msg)
@@ -347,7 +347,8 @@ namespace mpqsort::helpers {
 
     // Number of pivots needs to be 2^k - 1
     template <typename RandomBaseIt, typename Comparator, typename Element>
-    inline auto _find_element_segment_id(RandomBaseIt base, long size, Element& el, Comparator& comp) {
+    inline auto _find_element_segment_id(RandomBaseIt base, long size, Element& el,
+                                         Comparator& comp) {
         long lp = 0, rp = size - 1;
         long num_of_comparisons = static_cast<long>(std::log2(lp + rp));
         long idx;
@@ -357,8 +358,7 @@ namespace mpqsort::helpers {
 
             if (comp(el, base[idx])) {
                 rp = idx - 1;
-            }
-            else {
+            } else {
                 lp = idx + 1;
             }
         }
@@ -575,19 +575,123 @@ namespace mpqsort::impl {
         pivots[1] = base[idx2];
         pivots[2] = base[idx3];
 
+        // Compute number of segments
+        int num_segments = pivots.size() + 1;
+        auto last_pivot_val = pivots[0];
+        // If some pivots equal, no segments in between them
+        for (size_t i = 1; i < pivots.size(); ++i) {
+            if (!comp(last_pivot_val, pivots[i]) && !comp(pivots[i], last_pivot_val))
+                --num_segments;
+            last_pivot_val = pivots[i];
+        }
+
+        // TODO: Return if num of segments eq 2 and compute boundaries
+        // All pivots are the same
+
         // Preallocate map holding semi-processed elements
+        // TODO: Maybe not necessary
         std::vector<std::vector<ValueType>> map(4, std::vector<ValueType>(4));
 
         // Indexes in blocks
-        std::vector<long> idx(4);
-        auto idx_ptr = idx.data();
+        std::vector<long> segment_idx(4);
+        // Add boundary for right most segment
+        auto idx_ptr = segment_idx.data();
 
-        // Find boundaries of segments
-        #pragma omp parallel for reduction(+:idx_ptr[:4])
+// Find boundaries of segments
+#pragma omp parallel for reduction(+ : idx_ptr[:4])
         for (long i = lp; i <= rp; ++i) {
-            auto segment_id = helpers::_find_element_segment_id(pivots, pivots.size(), base[i], comp);
+            auto segment_id
+                = helpers::_find_element_segment_id(pivots, pivots.size(), base[i], comp);
             ++idx_ptr[segment_id];
         }
+
+        // Compute beginning of each segment
+        // Small number of segments => seq is faster than par
+        std::exclusive_scan(segment_idx.begin(), segment_idx.end(), segment_idx.begin(), 0);
+
+        // Create boundaries for each segment
+        std::vector<long> segment_boundary(segment_idx.begin() + 1, segment_idx.end());
+        segment_boundary.emplace_back(rp + 1);
+
+
+        // While segments to process
+        // dept_segment is a segment, which started the partitioning and his element was not swapped
+        // with anything
+
+        // Returns if pivot belongs to given segment
+        auto element_in_segment = [&](auto& el, size_t current_segment) {
+            // If first segment => has only right pivot
+            if (current_segment == 0) return comp(el, pivots.front());
+            // If last segment => has only left pivot
+            if (current_segment == segment_idx.size() - 1) return !comp(el, pivots.back());
+
+            return !comp(el, pivots[current_segment - 1]) && comp(el, pivots[current_segment]);
+        };
+
+        // dept_segment
+        // -1: No elements to swap with (start or segment processed)
+        // (0 -> s): Segment ID in dept
+        int current_segment = 0, dept_segment = -1;
+        ValueType tmp_el;
+        while (num_segments > 0) {
+            // Already processed, go to next one
+            if (segment_idx[current_segment] >= segment_boundary[current_segment]) {
+                current_segment = (current_segment + 1) % segment_idx.size();
+                continue;
+            }
+
+            // Segment was in dept, save tmp_el and find new element to swap
+            if (dept_segment == current_segment) {
+                base[segment_idx[current_segment]] = tmp_el;
+                ++segment_idx[current_segment];
+                dept_segment = -1;
+
+                // Was in dept and this was last element in this segment
+                // Move to next segment
+                if (segment_idx[current_segment] >= segment_boundary[current_segment]) {
+                    current_segment = (current_segment + 1) % segment_idx.size();
+                    --num_segments;
+                    continue;
+                }
+            }
+
+            // While elements in current segment belong to it
+            while (segment_idx[current_segment] < segment_boundary[current_segment]
+                   && element_in_segment(base[segment_idx[current_segment]], current_segment)) {
+                ++segment_idx[current_segment];
+            }
+
+            // All elements of this segment processed, continue with next one
+            if (segment_idx[current_segment] >= segment_boundary[current_segment]) {
+                current_segment = (current_segment + 1) % segment_idx.size();
+                --num_segments;
+                dept_segment = -1;
+                continue;
+            }
+
+            // If started partitioning, no element to swap with
+            if (dept_segment == -1) {
+                dept_segment = current_segment;
+                tmp_el = base[segment_idx[current_segment]];
+            } else {
+                // Found segment for tmp_el, swap them do all again for new tmp_el
+                swap(tmp_el, base[segment_idx[current_segment]]);
+                ++segment_idx[current_segment];
+
+                // Was in dept and this was last element in this segment
+                // Move to next segment
+                if (segment_idx[current_segment] >= segment_boundary[current_segment]) {
+                    --num_segments;
+                }
+            }
+
+            current_segment = helpers::_find_element_segment_id(pivots.begin(), pivots.size(), tmp_el, comp);
+        }
+
+        PRINT_ITERS(base, lp, rp, "End of multiway partitioning");
+        for (auto& p: pivots)
+            std::cout << p << " ";
+        std::cout << std::endl;
     }
 
     template <typename NumPivot, typename RandomBaseIt, typename Compare>
