@@ -345,6 +345,46 @@ namespace mpqsort::helpers {
         }
     }
 
+    template <typename RandomBaseIt, typename Comparator>
+    inline auto _get_pivots(RandomBaseIt base, long lp, long rp, long num_pivots,
+                            Comparator& comp) {
+        auto size = rp - lp + 1;
+        const auto sample_size = parameters::ONE_PIVOT_SAMPLE_SIZE * num_pivots;
+
+        assert("num_pivots must be 2^k - 1" && (num_pivots + 1) > 0
+               && ((num_pivots + 1) & (num_pivots)) == 0);
+        assert("Array smaller than num_pivots" && size >= num_pivots);
+
+        using ValueType = typename std::iterator_traits<RandomBaseIt>::value_type;
+        std::vector<ValueType> samples(sample_size);
+        std::vector<ValueType> pivots(num_pivots);
+
+        // If not enough elements for sampling
+        if (size < sample_size) {
+            for (long i = 1; i < num_pivots + 1; ++i) {
+                pivots[i - 1] = base[size * i / (num_pivots + 1) + lp];
+            }
+
+            std::sort(pivots.begin(), pivots.end(), comp);
+
+            return pivots;
+        } else {
+            // Get sample elements
+            for (long i = 0; i < sample_size; ++i) {
+                auto index = size * i / sample_size + lp;
+                samples[i] = base[index];
+            }
+
+            std::sort(samples.begin(), samples.end(), comp);
+
+            for (long i = 1; i < num_pivots + 1; ++i) {
+                pivots[i - 1] = samples[sample_size * i / (num_pivots + 1)];
+            }
+
+            return pivots;
+        }
+    }
+
     // Number of pivots needs to be 2^k - 1
     template <typename RandomBaseIt, typename Comparator, typename Element>
     inline auto _find_element_segment_id(RandomBaseIt base, long size, Element& el,
@@ -557,23 +597,13 @@ namespace mpqsort::impl {
 
     // PAR
     template <typename RandomBaseIt, typename Compare>
-    auto _par_multiway_partition_second(RandomBaseIt base, long lp, long rp, Compare& comp) {
+    auto _par_multiway_partition_second(RandomBaseIt base, long lp, long rp, long num_pivots,
+                                        Compare& comp) {
         using std::swap;
         using ValueType = typename std::iterator_traits<RandomBaseIt>::value_type;
 
         // Get pivots
-        auto [idx1, idx2, idx3] = helpers::_get_pivot_indexes_three(base, lp, rp, comp);
-
-        // Sort pivots
-        if (comp(base[idx2], base[idx1])) swap(base[idx1], base[idx2]);
-        if (comp(base[idx3], base[idx1])) swap(base[idx1], base[idx3]);
-        if (comp(base[idx3], base[idx2])) swap(base[idx2], base[idx3]);
-
-        // Init pivots
-        std::vector<ValueType> pivots(3);
-        pivots[0] = base[idx1];
-        pivots[1] = base[idx2];
-        pivots[2] = base[idx3];
+        auto pivots = helpers::_get_pivots(base, lp, rp, num_pivots, comp);
 
         // Indexes in blocks
         std::vector<long> segment_idx(4);
@@ -601,7 +631,6 @@ namespace mpqsort::impl {
         for (size_t i = 0; i < segment_idx.size(); ++i) {
             if (segment_idx[i] == segment_boundary[i]) --num_segments;
         }
-
 
         // Returns if element belongs to given segment
         auto element_in_segment = [&](auto& el, size_t current_segment) {

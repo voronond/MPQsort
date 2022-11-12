@@ -210,7 +210,6 @@ TEST_CASE("Find a segment ID for an element") {
 TEST_CASE("Test parallel partitioning") {
     std::vector<int> test_vector{10, 9, 8, 7, 6, 5, 4, 3, 2, 1};
     auto comp = std::less<int>();
-    std::vector<int> pivots;
     int num_pivots = 3;
 
     auto check_result = [](auto boundaries, auto test_vector, auto pivots) {
@@ -251,14 +250,19 @@ TEST_CASE("Test parallel partitioning") {
         test_vector.resize(vector_length);
     }
 
+    SECTION("Small set of number values") {
+        // Random length from 100 to 10000
+        auto vector_length = GENERATE(take(100, random(3, 1000)));
+        // Generate vector with random numbers
+        test_vector = GENERATE(chunk(1000, take(1000, random(0, 10))));
+        test_vector.resize(vector_length);
+    }
+
     // If sample small enough, pivots are chosen like this without sampling
-    for (int i = 1; i < num_pivots + 1; ++i)
-        pivots.push_back(test_vector[test_vector.size() * i / (num_pivots + 1)]);
-
-    std::sort(pivots.begin(), pivots.end(), std::less<int>());
-
-    auto boundaries = mpqsort::impl::_par_multiway_partition_second(test_vector.begin(), 0,
-                                                                    test_vector.size() - 1, comp);
+    auto pivots
+        = helpers::_get_pivots(test_vector.begin(), 0, test_vector.size() - 1, num_pivots, comp);
+    auto boundaries = mpqsort::impl::_par_multiway_partition_second(
+        test_vector.begin(), 0, test_vector.size() - 1, num_pivots, comp);
 
     check_result(boundaries, test_vector, pivots);
 }
