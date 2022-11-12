@@ -265,7 +265,7 @@ TEST_CASE("Test parallel partitioning") {
         // Random length from 100 to 10000
         auto vector_length = GENERATE(take(100, random(7, 1000)));
         // Generate vector with random numbers
-        test_vector = GENERATE(chunk(1000, take(1000, random(0, 10))));
+        test_vector = GENERATE(chunk(1000, take(1000, random(0, 1000))));
         test_vector.resize(vector_length);
     }
 
@@ -274,7 +274,7 @@ TEST_CASE("Test parallel partitioning") {
         // Random length from 100 to 10000
         auto vector_length = GENERATE(take(100, random(15, 1000)));
         // Generate vector with random numbers
-        test_vector = GENERATE(chunk(1000, take(1000, random(0, 10))));
+        test_vector = GENERATE(chunk(1000, take(1000, random(0, 1000))));
         test_vector.resize(vector_length);
     }
 
@@ -283,7 +283,16 @@ TEST_CASE("Test parallel partitioning") {
         // Random length from 100 to 10000
         auto vector_length = GENERATE(take(100, random(255, 10000)));
         // Generate vector with random numbers
-        test_vector = GENERATE(chunk(1000, take(1000, random(0, 10))));
+        test_vector = GENERATE(chunk(10000, take(10000, random(0, 1000))));
+        test_vector.resize(vector_length);
+    }
+
+    SECTION("511 pivots") {
+        num_pivots = 15;
+        // Random length from 100 to 10000
+        auto vector_length = GENERATE(take(100, random(511, 100000)));
+        // Generate vector with random numbers
+        test_vector = GENERATE(chunk(100000, take(100000, random(0, 10000))));
         test_vector.resize(vector_length);
     }
 

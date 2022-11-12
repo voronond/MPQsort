@@ -602,6 +602,8 @@ namespace mpqsort::impl {
         using std::swap;
         using ValueType = typename std::iterator_traits<RandomBaseIt>::value_type;
 
+        int num_segments = num_pivots + 1;
+
         // Get pivots
         auto pivots = helpers::_get_pivots(base, lp, rp, num_pivots, comp);
 
@@ -624,49 +626,43 @@ namespace mpqsort::impl {
         std::vector<long> segment_boundary(segment_idx.begin() + 1, segment_idx.end());
         segment_boundary.emplace_back(rp + 1);
 
-        // Compute number of segments
-        int num_segments = pivots.size() + 1;
-
-        // If index already >= boundary => segment clean
+        // If index already >= boundary => segment clean and no elements belong in it
         for (size_t i = 0; i < segment_idx.size(); ++i) {
             if (segment_idx[i] == segment_boundary[i]) --num_segments;
         }
 
         // Returns if element belongs to given segment
-        auto element_in_segment = [&](auto& el, size_t current_segment) {
+        auto element_in_segment = [&](auto& el, size_t segment) {
             // If first segment => has only right pivot
-            if (current_segment == 0) return comp(el, pivots.front());
+            if (segment == 0) return comp(el, pivots.front());
             // If last segment => has only left pivot
-            if (current_segment == segment_idx.size() - 1) return !comp(el, pivots.back());
+            if (segment == segment_idx.size() - 1) return !comp(el, pivots.back());
 
-            return !comp(el, pivots[current_segment - 1]) && comp(el, pivots[current_segment]);
+            return !comp(el, pivots[segment - 1]) && comp(el, pivots[segment]);
         };
 
-        // While segments to process
-        // dept_segment is a segment, which started the partitioning and his element was not swapped
-        // with anything
+        // Returns next unprocessed segment
+        auto find_unprocessed_segment = [&](auto& segment) {
+            for (size_t i = 0; i < segment_idx.size(); ++i) {
+                if (segment_idx[segment] >= segment_boundary[segment])
+                    ++segment %= segment_idx.size();
+                else
+                    break;
+            }
+        };
+
         int current_segment = 0, dept_segment = -1;
         ValueType tmp_el;
-        while (num_segments > 0) {
-            // Already processed, go to next one
-            if (segment_idx[current_segment] >= segment_boundary[current_segment]) {
-                current_segment = (current_segment + 1) % segment_idx.size();
-                continue;
-            }
 
-            // Segment was in dept, save tmp_el and find new element to swap
+        // Find first unclean segment
+        find_unprocessed_segment(current_segment);
+
+        while (num_segments > 0) {
+            // Segment was in dept, save tmp_el
             if (dept_segment == current_segment) {
                 base[segment_idx[current_segment]] = tmp_el;
                 ++segment_idx[current_segment];
                 dept_segment = -1;
-
-                // Was in dept and this was last element in this segment
-                // Move to next segment
-                if (segment_idx[current_segment] >= segment_boundary[current_segment]) {
-                    current_segment = (current_segment + 1) % segment_idx.size();
-                    --num_segments;
-                    continue;
-                }
             }
 
             // While elements in current segment belong to it
@@ -677,9 +673,8 @@ namespace mpqsort::impl {
 
             // All elements of this segment processed, continue with next one
             if (segment_idx[current_segment] >= segment_boundary[current_segment]) {
-                current_segment = (current_segment + 1) % segment_idx.size();
+                find_unprocessed_segment(current_segment);
                 --num_segments;
-                dept_segment = -1;
                 continue;
             }
 
@@ -688,15 +683,9 @@ namespace mpqsort::impl {
                 dept_segment = current_segment;
                 tmp_el = base[segment_idx[current_segment]];
             } else {
-                // Found segment for tmp_el, swap them do all again for new tmp_el
+                // Found segment for tmp_el, swap them
                 swap(tmp_el, base[segment_idx[current_segment]]);
                 ++segment_idx[current_segment];
-
-                // Was in dept and this was last element in this segment
-                // Move to next segment
-                if (segment_idx[current_segment] >= segment_boundary[current_segment]) {
-                    --num_segments;
-                }
             }
 
             current_segment
