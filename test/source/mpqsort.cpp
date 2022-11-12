@@ -253,6 +253,18 @@ TEST_CASE("Test parallel partitioning") {
         test_vector = {4, 4, 4, 4, 1, 1, 4, 1, 6, 4, 6, 6};
     }
 
+    SECTION("Two pivots same values") {
+        test_vector = {4, 4, 4, 4, 1, 1, 4, 1, 6, 1, 6, 6};
+    }
+
+    SECTION("Random numbers and sizes") {
+        // Random length from 100 to 10000
+        auto vector_length = GENERATE(take(100, random(3, 1000)));
+        // Generate vector with random numbers
+        test_vector = GENERATE(chunk(1000, take(1000, random(0, 1000))));
+        test_vector.resize(vector_length);
+    }
+
     // If sample small enough, pivots are chosen like this without sampling
     for (int i = 1; i < num_pivots + 1; ++i)
         pivots.push_back(test_vector[test_vector.size() * i/(num_pivots + 1)]);

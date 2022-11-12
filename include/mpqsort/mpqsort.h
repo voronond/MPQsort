@@ -686,15 +686,6 @@ namespace mpqsort::impl {
             current_segment = helpers::_find_element_segment_id(pivots.begin(), pivots.size(), tmp_el, comp);
         }
 
-        PRINT_ITERS(base, lp, rp, "End of multiway partitioning");
-        for (auto& p: pivots)
-            std::cout << p << " ";
-        std::cout << std::endl;
-        std::cout << "Boundaries" << std::endl;
-        for (auto& b: segment_boundary)
-            std::cout << b << " ";
-        std::cout << std::endl;
-
         return segment_boundary;
     }
 
