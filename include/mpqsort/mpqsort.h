@@ -606,11 +606,11 @@ namespace mpqsort::impl {
         auto pivots = helpers::_get_pivots(base, lp, rp, num_pivots, comp);
 
         // Indexes in blocks
-        std::vector<long> segment_idx(4);
+        std::vector<long> segment_idx(num_pivots + 1);
         auto idx_ptr = segment_idx.data();
 
 // Find boundaries of segments
-#pragma omp parallel for reduction(+ : idx_ptr[:4])
+#pragma omp parallel for reduction(+ : idx_ptr[:num_pivots + 1])
         for (long i = lp; i <= rp; ++i) {
             auto segment_id
                 = helpers::_find_element_segment_id(pivots, pivots.size(), base[i], comp);

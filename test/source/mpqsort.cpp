@@ -215,16 +215,18 @@ TEST_CASE("Test parallel partitioning") {
     auto check_result = [](auto boundaries, auto test_vector, auto pivots) {
         for (size_t i = 0; i < boundaries.size() - 1; ++i) {
             long start = 0;
+
+            // Elements on left from pivot are <
             while (start < boundaries[i]) {
                 REQUIRE(test_vector[start] < pivots[i]);
                 ++start;
             }
-        }
 
-        long start = boundaries[boundaries.size() - 2];
-        while (start < boundaries.back()) {
-            REQUIRE(test_vector[start] >= pivots.back());
-            ++start;
+            // Elements on right from pivot are >=
+            while (start < boundaries.back()) {
+                REQUIRE(test_vector[start] >= pivots[i]);
+                ++start;
+            }
         }
     };
 
@@ -253,6 +255,33 @@ TEST_CASE("Test parallel partitioning") {
     SECTION("Small set of number values") {
         // Random length from 100 to 10000
         auto vector_length = GENERATE(take(100, random(3, 1000)));
+        // Generate vector with random numbers
+        test_vector = GENERATE(chunk(1000, take(1000, random(0, 10))));
+        test_vector.resize(vector_length);
+    }
+
+    SECTION("7 pivots") {
+        num_pivots = 7;
+        // Random length from 100 to 10000
+        auto vector_length = GENERATE(take(100, random(7, 1000)));
+        // Generate vector with random numbers
+        test_vector = GENERATE(chunk(1000, take(1000, random(0, 10))));
+        test_vector.resize(vector_length);
+    }
+
+    SECTION("15 pivots") {
+        num_pivots = 15;
+        // Random length from 100 to 10000
+        auto vector_length = GENERATE(take(100, random(15, 1000)));
+        // Generate vector with random numbers
+        test_vector = GENERATE(chunk(1000, take(1000, random(0, 10))));
+        test_vector.resize(vector_length);
+    }
+
+    SECTION("255 pivots") {
+        num_pivots = 15;
+        // Random length from 100 to 10000
+        auto vector_length = GENERATE(take(100, random(255, 10000)));
         // Generate vector with random numbers
         test_vector = GENERATE(chunk(1000, take(1000, random(0, 10))));
         test_vector.resize(vector_length);
