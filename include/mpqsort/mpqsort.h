@@ -562,7 +562,7 @@ namespace mpqsort::impl {
         using ValueType = typename std::iterator_traits<RandomBaseIt>::value_type;
 
         // Get pivots
-        auto [idx1, idx2, idx3] = helpers::_get_pivot_indexes_three(base, lp + 2, rp - 1, comp);
+        auto [idx1, idx2, idx3] = helpers::_get_pivot_indexes_three(base, lp, rp, comp);
 
         // Sort pivots
         if (comp(base[idx2], base[idx1])) swap(base[idx1], base[idx2]);
@@ -574,16 +574,6 @@ namespace mpqsort::impl {
         pivots[0] = base[idx1];
         pivots[1] = base[idx2];
         pivots[2] = base[idx3];
-
-        // Compute number of segments
-        int num_segments = pivots.size() + 1;
-        auto last_pivot_val = pivots[0];
-        // If some pivots equal, no segments in between them
-        for (size_t i = 1; i < pivots.size(); ++i) {
-            if (!comp(last_pivot_val, pivots[i]) && !comp(pivots[i], last_pivot_val))
-                --num_segments;
-            last_pivot_val = pivots[i];
-        }
 
         // TODO: Return if num of segments eq 2 and compute boundaries
         // All pivots are the same
@@ -613,6 +603,14 @@ namespace mpqsort::impl {
         std::vector<long> segment_boundary(segment_idx.begin() + 1, segment_idx.end());
         segment_boundary.emplace_back(rp + 1);
 
+        // Compute number of segments
+        int num_segments = pivots.size() + 1;
+
+        // If index already >= boundary, remove it
+        for (size_t i = 0; i < segment_idx.size(); ++i) {
+            if (segment_idx[i] == segment_boundary[i])
+                --num_segments;
+        }
 
         // While segments to process
         // dept_segment is a segment, which started the partitioning and his element was not swapped
@@ -692,6 +690,12 @@ namespace mpqsort::impl {
         for (auto& p: pivots)
             std::cout << p << " ";
         std::cout << std::endl;
+        std::cout << "Boundaries" << std::endl;
+        for (auto& b: segment_boundary)
+            std::cout << b << " ";
+        std::cout << std::endl;
+
+        return segment_boundary;
     }
 
     template <typename NumPivot, typename RandomBaseIt, typename Compare>

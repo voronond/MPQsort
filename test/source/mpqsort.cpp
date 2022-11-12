@@ -208,11 +208,61 @@ TEST_CASE("Find a segment ID for an element") {
 }
 
 TEST_CASE("Test parallel partitioning") {
-    // TODO: Add tests for sorting when implemented
     std::vector<int> test_vector{10, 9, 8, 7, 6, 5, 4, 3, 2, 1};
     auto comp = std::less<int>();
-    mpqsort::impl::_par_multiway_partition_second(test_vector.begin(), 0, test_vector.size() - 1,
+    std::vector<int> pivots;
+    int num_pivots = 3;
+
+    auto check_result = [](auto boundaries, auto test_vector, auto pivots) {
+        for (size_t i = 0; i < boundaries.size() - 1; ++i) {
+            long start = 0;
+            while (start < boundaries[i]) {
+                REQUIRE(test_vector[start] < pivots[i]);
+                ++start;
+            }
+        }
+
+        long start = boundaries[boundaries.size() - 2];
+        while (start < boundaries.back()) {
+            REQUIRE(test_vector[start] >= pivots.back());
+            ++start;
+        }
+    };
+
+    SECTION("Reverse order") {
+        test_vector = {10, 9, 8, 7, 6, 5, 4, 3, 2, 1};
+    }
+
+    SECTION("Already sorted") {
+        test_vector = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    }
+
+    SECTION("Three elements") {
+        test_vector = {3, 2, 1};
+    }
+
+    SECTION("Same elements") {
+        test_vector = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+    }
+
+    SECTION("Three distinct values") {
+        test_vector = {4, 4, 4, 1, 1, 1, 6, 6, 6};
+    }
+
+    SECTION("Pivots same values") {
+        test_vector = {4, 4, 4, 4, 1, 1, 4, 1, 6, 4, 6, 6};
+    }
+
+    // If sample small enough, pivots are chosen like this without sampling
+    for (int i = 1; i < num_pivots + 1; ++i)
+        pivots.push_back(test_vector[test_vector.size() * i/(num_pivots + 1)]);
+
+    std::sort(pivots.begin(), pivots.end(), std::less<int>());
+
+    auto boundaries = mpqsort::impl::_par_multiway_partition_second(test_vector.begin(), 0, test_vector.size() - 1,
                                                   comp);
+
+    check_result(boundaries, test_vector, pivots);
 }
 
 // Test if all sort prototypes can be called and instantiated (without policies)
