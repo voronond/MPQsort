@@ -575,16 +575,8 @@ namespace mpqsort::impl {
         pivots[1] = base[idx2];
         pivots[2] = base[idx3];
 
-        // TODO: Return if num of segments eq 2 and compute boundaries
-        // All pivots are the same
-
-        // Preallocate map holding semi-processed elements
-        // TODO: Maybe not necessary
-        std::vector<std::vector<ValueType>> map(4, std::vector<ValueType>(4));
-
         // Indexes in blocks
         std::vector<long> segment_idx(4);
-        // Add boundary for right most segment
         auto idx_ptr = segment_idx.data();
 
 // Find boundaries of segments
@@ -596,7 +588,6 @@ namespace mpqsort::impl {
         }
 
         // Compute beginning of each segment
-        // Small number of segments => seq is faster than par
         std::exclusive_scan(segment_idx.begin(), segment_idx.end(), segment_idx.begin(), 0);
 
         // Create boundaries for each segment
@@ -606,17 +597,13 @@ namespace mpqsort::impl {
         // Compute number of segments
         int num_segments = pivots.size() + 1;
 
-        // If index already >= boundary, remove it
+        // If index already >= boundary => segment clean
         for (size_t i = 0; i < segment_idx.size(); ++i) {
-            if (segment_idx[i] == segment_boundary[i])
-                --num_segments;
+            if (segment_idx[i] == segment_boundary[i]) --num_segments;
         }
 
-        // While segments to process
-        // dept_segment is a segment, which started the partitioning and his element was not swapped
-        // with anything
 
-        // Returns if pivot belongs to given segment
+        // Returns if element belongs to given segment
         auto element_in_segment = [&](auto& el, size_t current_segment) {
             // If first segment => has only right pivot
             if (current_segment == 0) return comp(el, pivots.front());
@@ -626,9 +613,9 @@ namespace mpqsort::impl {
             return !comp(el, pivots[current_segment - 1]) && comp(el, pivots[current_segment]);
         };
 
-        // dept_segment
-        // -1: No elements to swap with (start or segment processed)
-        // (0 -> s): Segment ID in dept
+        // While segments to process
+        // dept_segment is a segment, which started the partitioning and his element was not swapped
+        // with anything
         int current_segment = 0, dept_segment = -1;
         ValueType tmp_el;
         while (num_segments > 0) {
@@ -683,7 +670,8 @@ namespace mpqsort::impl {
                 }
             }
 
-            current_segment = helpers::_find_element_segment_id(pivots.begin(), pivots.size(), tmp_el, comp);
+            current_segment
+                = helpers::_find_element_segment_id(pivots.begin(), pivots.size(), tmp_el, comp);
         }
 
         return segment_boundary;
