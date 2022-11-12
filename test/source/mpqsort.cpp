@@ -279,7 +279,7 @@ TEST_CASE("Test parallel partitioning") {
     }
 
     SECTION("255 pivots") {
-        num_pivots = 15;
+        num_pivots = 255;
         // Random length from 100 to 10000
         auto vector_length = GENERATE(take(100, random(255, 10000)));
         // Generate vector with random numbers
@@ -288,11 +288,12 @@ TEST_CASE("Test parallel partitioning") {
     }
 
     SECTION("511 pivots") {
-        num_pivots = 15;
+        // TODO: Very slow, 255 seems way faster
+        num_pivots = 511;
         // Random length from 100 to 10000
-        auto vector_length = GENERATE(take(100, random(511, 100000)));
+        auto vector_length = GENERATE(take(100, random(511, 10000)));
         // Generate vector with random numbers
-        test_vector = GENERATE(chunk(100000, take(100000, random(0, 10000))));
+        test_vector = GENERATE(chunk(10000, take(10000, random(0, 10000))));
         test_vector.resize(vector_length);
     }
 
