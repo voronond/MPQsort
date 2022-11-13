@@ -649,47 +649,190 @@ namespace mpqsort::impl {
                 else
                     break;
             }
+            // All segments processed
+            segment = -1;
         };
 
-        int current_segment = 0, dept_segment = -1;
-        ValueType tmp_el;
+        // Table of indexes where is the emtpy space to insert an element
+        int num_threads = omp_get_max_threads();
+        int block_size = 1;
+        // num_segments x (T-1) * block_size
+        // TODO: Some segments can be already processed, change num of columns based on that
+        // (reindex segments)
+        std::vector<std::vector<long>> empty_spaces(
+            pivots.size() + 1, std::vector<long>((num_threads - 1) * block_size));
+        // Next empty index in empty_spaces
+        std::vector<long> empty_spaces_index(pivots.size() + 1, 0);
+        // Table of elements belonging to segment
+        std::vector<std::vector<ValueType>> elements_table(
+            pivots.size() + 1, std::vector<ValueType>((num_threads - 1) * block_size));
+        // Next empty index in elements_table
+        std::vector<long> elements_table_index(pivots.size() + 1, 0);
 
         // Find first unclean segment
+        int current_segment = 0;
         find_unprocessed_segment(current_segment);
 
-        while (num_segments > 0) {
-            // Segment was in dept, save tmp_el
-            if (dept_segment == current_segment) {
-                base[segment_idx[current_segment]] = tmp_el;
-                ++segment_idx[current_segment];
-                dept_segment = -1;
+// TODO: Debug on 2 threads only, then change to max
+#pragma omp parallel shared(empty_spaces, empty_spaces_index, elements_table,                  \
+                            elements_table_index, segment_idx, segment_boundary, base, pivots) \
+    firstprivate(num_segments, current_segment) num_threads(1)
+        {
+            // Private start and end of block for given segment
+            std::vector<long> block_start(pivots.size() + 1, 0);
+            std::vector<long> block_end(pivots.size() + 1, 0);
+            ValueType tmp_el;
+            bool tmp_el_set = false;
+            int dept_segment_el = -1; // Segment id of tmp_el
+            int dept_segment = -1;
+
+            // Returns next unprocessed block
+            auto find_unprocessed_block = [&](auto& segment) {
+                for (size_t i = 0; i < block_start.size(); ++i) {
+                    if (block_start[segment] >= block_end[segment])
+                        ++segment %= segment_idx.size();
+                    else
+                        break;
+                }
+                // All blocks processed
+                segment = -1;
+            };
+
+            while (num_segments > 0) {
+                // Block already marked as a "clean", so only move element in a global table
+                // This can happen only if this thread as an element belonging in this segment but is owned by another thread
+                if (block_start[current_segment] == -1) {
+                    // Do not know the index of this element in other block, it will be provided by another thread after blocks clean
+                    if (tmp_el_set) { // Only if tmp_el set
+                        int index;
+#pragma omp atomic capture
+                        index = elements_table_index[current_segment]++;
+                        elements_table[current_segment][index] = tmp_el;
+                        tmp_el_set = false;
+                        // tmp_el was from dept segment, segment no longer in dept
+                        if (dept_segment != -1 && dept_segment == dept_segment_el) {
+                            // Insert element index in global table so that other threads can copy
+                            // element to that place
+#pragma omp atomic capture
+                            index = empty_spaces_index[current_segment]++;
+                            empty_spaces[current_segment][index] = block_start[dept_segment];
+                            // Move dept segment index
+                            ++block_start[dept_segment];
+                            dept_segment = -1;
+                            dept_segment_el = -1;
+                        }
+                    }
+
+                    find_unprocessed_block(current_segment);
+                    // If all blocks processed
+                    if (current_segment == -1) {
+                        find_unprocessed_segment(current_segment);
+
+                        // If all segments processed end while
+                        num_segments = 0;
+                        continue;
+                    }
+                } else if (block_start[current_segment] >= block_end[current_segment]) {
+// Get private block from global segment
+#pragma omp atomic capture
+                    {
+                        block_start[current_segment] = segment_idx[current_segment];
+                        segment_idx[current_segment] += block_size;
+                    }
+                    // Block end can't be greater than segment_boundary
+                    block_end[current_segment] = std::min(block_start[current_segment] + block_size,
+                                                          segment_boundary[current_segment]);
+
+                    // All blocks taken, segment "clean" for this thread
+                    if (block_start[current_segment] >= block_end[current_segment]) {
+                        --num_segments;
+                        // Set to know that this segment was already cleaned once so only insert element in a table
+                        block_start[current_segment] = -1;
+                        // TODO: Maybe go thought blocks and then segments
+                        //find_unprocessed_segment(current_segment);
+                        continue;
+                    }
+                }
+
+                // Segment was in dept, save tmp_el
+                if (dept_segment == current_segment) {
+                    base[block_start[current_segment]] = tmp_el;
+                    tmp_el_set = false;
+                    ++block_start[current_segment];
+                    dept_segment = -1;
+                }
+
+                // While elements in current segment belong to it
+                while (block_start[current_segment] < block_end[current_segment]
+                       && element_in_segment(base[block_start[current_segment]], current_segment)) {
+                    ++block_start[current_segment];
+                }
+
+                // All elements of this segment processed, continue with next one
+                if (block_start[current_segment] >= block_end[current_segment]) {
+                    find_unprocessed_segment(current_segment);
+                    --num_segments;
+                    continue;
+                }
+
+                // If started partitioning, no element to swap with
+                if (dept_segment == -1) {
+                    dept_segment = current_segment;
+                    tmp_el = base[block_start[current_segment]];
+                    tmp_el_set = true;
+                } else {
+                    // Found segment for tmp_el, swap them
+                    swap(tmp_el, base[block_start[current_segment]]);
+                    tmp_el_set = true;
+                    ++block_start[current_segment];
+                }
+
+                current_segment = helpers::_find_element_segment_id(pivots.begin(), pivots.size(),
+                                                                    tmp_el, comp);
             }
 
-            // While elements in current segment belong to it
-            while (segment_idx[current_segment] < segment_boundary[current_segment]
-                   && element_in_segment(base[segment_idx[current_segment]], current_segment)) {
-                ++segment_idx[current_segment];
+            // If was element set and all blocks were cleaned, we need to move it in a table
+            if (tmp_el_set) {
+                current_segment = helpers::_find_element_segment_id(pivots.begin(), pivots.size(),
+                                                                    tmp_el, comp);
+                int index;
+#pragma omp atomic capture
+                index = elements_table_index[current_segment]++;
+                elements_table[current_segment][index] = tmp_el;
+                tmp_el_set = false;
             }
 
-            // All elements of this segment processed, continue with next one
-            if (segment_idx[current_segment] >= segment_boundary[current_segment]) {
-                find_unprocessed_segment(current_segment);
-                --num_segments;
-                continue;
-            }
+            // All segments clean from this thread perspective, but some blocks have still unprocessed elements
+            // Insert those indexes in a global arr so that other threads know where they can place their elements from a global table
+            for (size_t i = 0; i < block_start.size(); ++i) {
+                // Block processed or not owned
+                if (block_start[i] == -1 || block_start[i] >= block_end[i])
+                    continue;
 
-            // If started partitioning, no element to swap with
-            if (dept_segment == -1) {
-                dept_segment = current_segment;
-                tmp_el = base[segment_idx[current_segment]];
-            } else {
-                // Found segment for tmp_el, swap them
-                swap(tmp_el, base[segment_idx[current_segment]]);
-                ++segment_idx[current_segment];
-            }
+                int num_of_indexes = block_end[i] - block_start[i];
+                int start;
 
-            current_segment
-                = helpers::_find_element_segment_id(pivots.begin(), pivots.size(), tmp_el, comp);
+                #pragma omp atomic capture
+                {
+                    start = empty_spaces_index[i];
+                    empty_spaces_index[i] += num_of_indexes;
+                }
+
+                while (block_start[i] < block_end[i]) {
+                    empty_spaces[i][start] = block_start[i];
+
+                    ++start;
+                    ++block_start[i];
+                }
+            }
+        }
+
+// Insert elements from tables in an array
+#pragma omp parallel for
+        for (size_t i = 0; i < empty_spaces_index.size(); ++i) {
+            for (int j = 0; j < empty_spaces_index[i]; ++j) {
+                base[empty_spaces[i][j]] = elements_table[i][j];
+            }
         }
 
         return segment_boundary;
