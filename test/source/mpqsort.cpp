@@ -213,7 +213,7 @@ TEST_CASE("Test parallel partitioning") {
     int num_pivots = 3;
 
     auto check_result = [](auto boundaries, auto test_vector, auto pivots) {
-        #pragma omp parallel for
+#pragma omp parallel for
         for (size_t i = 0; i < boundaries.size() - 1; ++i) {
             long start = 0;
 
@@ -235,9 +235,7 @@ TEST_CASE("Test parallel partitioning") {
 
     SECTION("Reverse order small 2") { test_vector = {10, 9, 8, 7}; }
 
-    SECTION("Reverse order") {
-        test_vector = {10, 9, 8, 7, 6, 5, 4, 3, 2, 1};
-    }
+    SECTION("Reverse order") { test_vector = {10, 9, 8, 7, 6, 5, 4, 3, 2, 1}; }
 
     SECTION("Already sorted") { test_vector = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}; }
 
@@ -251,9 +249,7 @@ TEST_CASE("Test parallel partitioning") {
 
     SECTION("Two pivots same values small") { test_vector = {4, 4, 4, 1, 4, 1, 6, 1, 6}; }
 
-    SECTION("Two pivots same values") {
-        test_vector = {4, 4, 4, 4, 1, 1, 4, 1, 6, 1, 6, 6};
-    }
+    SECTION("Two pivots same values") { test_vector = {4, 4, 4, 4, 1, 1, 4, 1, 6, 1, 6, 6}; }
 
     SECTION("Random numbers and sizes") {
         // Random length from 100 to 10000
@@ -298,23 +294,23 @@ TEST_CASE("Test parallel partitioning") {
         test_vector.resize(vector_length);
     }
 
-/*
-    SECTION("511 pivots") {
-        // TODO: Very slow, 255 seems way faster
-        num_pivots = 511;
-        // Random length from 100 to 10000
-        auto vector_length = GENERATE(take(100, random(511, 10000)));
-        // Generate vector with random numbers
-        test_vector = GENERATE(chunk(10000, take(10000, random(0, 10000))));
-        test_vector.resize(vector_length);
-    }
-    */
+    /*
+        SECTION("511 pivots") {
+            // TODO: Very slow, 255 seems way faster
+            num_pivots = 511;
+            // Random length from 100 to 10000
+            auto vector_length = GENERATE(take(100, random(511, 10000)));
+            // Generate vector with random numbers
+            test_vector = GENERATE(chunk(10000, take(10000, random(0, 10000))));
+            test_vector.resize(vector_length);
+        }
+        */
 
     // If sample small enough, pivots are chosen like this without sampling
     auto pivots
         = helpers::_get_pivots(test_vector.begin(), 0, test_vector.size() - 1, num_pivots, comp);
-    auto boundaries = mpqsort::impl::_par_multiway_partition_second(
-        test_vector.begin(), 0, test_vector.size() - 1, num_pivots, comp);
+    auto boundaries = mpqsort::impl::_par_multiway_partition_second(num_pivots,
+        test_vector.begin(), 0, test_vector.size() - 1, comp);
 
     check_result(boundaries, test_vector, pivots);
 }

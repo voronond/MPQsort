@@ -19,13 +19,23 @@
 
 #ifdef DEBUG
 #    define PRINT_ITERS(base, lp, rp, msg) mpqsort::helpers::print(base, lp, rp, msg)
-#    define PRINT_VECTOR(vec, msg) std::cout << msg << ":\n"; for (auto& el: vec) std::cout << el << " "; std::cout << std::endl
-#    define PRINT_TABLE(vec, msg) std::cout << msg << ":\n"; for (size_t i = 0; i < vec[0].size(); ++i) { for (size_t j = 0; j < vec.size(); ++j) std::cout << vec[j][i] << " "; std::cout << std::endl;}
+#    define PRINT_VECTOR(vec, msg)                   \
+        std::cout << msg << ":\n";                   \
+        for (auto& el : vec) std::cout << el << " "; \
+        std::cout << std::endl
+#    define PRINT_TABLE(vec, msg)                                                  \
+        std::cout << msg << ":\n";                                                 \
+        for (size_t i = 0; i < vec[0].size(); ++i) {                               \
+            for (size_t j = 0; j < vec.size(); ++j) std::cout << vec[j][i] << " "; \
+            std::cout << std::endl;                                                \
+        }
 #else
 #    define PRINT_ITERS(base, lp, rp, msg)
 #    define PRINT_VECTOR(vec, msg)
 #    define PRINT_TABLE(vec, msg)
 #endif
+
+#define INDEX(a, b, size) (a) * (size) + (b)
 
 /**
  * @brief Contains execution policy definitions for sort algorithms, helper functions and type
@@ -143,11 +153,11 @@ namespace mpqsort::execution {
  */
 namespace mpqsort::parameters {
     /**
-     * @brief Cacheline of your system
-     * Threads process the array in blocks and those blocks are the multiple of cacheline size to
-     * prevent false sharing between threads. The value is in bytes.
+     * @brief Size of block for parallel multiway partitioning
+     * Threads process an array in blocks to prevent false sharing and reduce number of
+     * atomic/critical sections.
      */
-    // static size_t CACHELINE_SIZE = 64;
+    static long BLOCK_SIZE = 64;
     static size_t SEQ_THRESHOLD = 1 << 17;
     static long NO_RECURSION_THRESHOLD = 128;  // based on benchmarks
     /**
@@ -601,12 +611,13 @@ namespace mpqsort::impl {
 
     // PAR
     template <typename RandomBaseIt, typename Compare>
-    auto _par_multiway_partition_second(RandomBaseIt base, long lp, long rp, long num_pivots,
+    auto _par_multiway_partition_second(long num_pivots, RandomBaseIt base, long lp, long rp,
                                         Compare& comp) {
         using std::swap;
         using ValueType = typename std::iterator_traits<RandomBaseIt>::value_type;
 
-        int num_segments = num_pivots + 1;
+        const int num_segments = num_pivots + 1;
+        int num_segments_left = num_segments;
 
         // Get pivots
         auto pivots = helpers::_get_pivots(base, lp, rp, num_pivots, comp);
@@ -616,7 +627,7 @@ namespace mpqsort::impl {
         auto idx_ptr = segment_idx.data();
 
 // Find boundaries of segments
-#pragma omp parallel for reduction(+ : idx_ptr[:num_pivots + 1])
+#pragma omp parallel for reduction(+ : idx_ptr[:num_segments])
         for (long i = lp; i <= rp; ++i) {
             auto segment_id
                 = helpers::_find_element_segment_id(pivots, pivots.size(), base[i], comp);
@@ -632,57 +643,46 @@ namespace mpqsort::impl {
 
         // If index already >= boundary => segment clean and no elements belong in it
         for (size_t i = 0; i < segment_idx.size(); ++i) {
-            if (segment_idx[i] == segment_boundary[i]) --num_segments;
+            if (segment_idx[i] == segment_boundary[i]) --num_segments_left;
         }
 
         // Returns if element belongs to given segment
         auto element_in_segment = [&](auto& el, size_t segment) {
-            // If first segment => has only right pivot
             if (segment == 0) return comp(el, pivots.front());
-            // If last segment => has only left pivot
             if (segment == segment_idx.size() - 1) return !comp(el, pivots.back());
 
             return !comp(el, pivots[segment - 1]) && comp(el, pivots[segment]);
         };
 
-        // Returns next unprocessed segment
         auto find_unprocessed_segment = [&](auto& segment) -> bool {
-            // Move to next segment before we test for unprocessed, we do not want to return current segment!!
-            ++segment %= segment_idx.size();
-            for (size_t i = 0; i < segment_idx.size() - 1; ++i) {
-                if (segment_idx[segment] >= segment_boundary[segment])
-                    ++segment %= segment_idx.size();
-                else
-                    return true;
+            for (size_t i = 0; i < segment_idx.size(); ++i) {
+                ++segment %= segment_idx.size();
+                if (segment_idx[segment] < segment_boundary[segment]) return true;
             }
             // All segments processed
             return false;
         };
 
-        // Table of indexes where is the emtpy space to insert an element
+        // Set max number of threads to work in parallel
         int num_threads = omp_get_max_threads();
-        int block_size = 64;
-        // num_segments x (T-1) * block_size
-        // TODO: Some segments can be already processed, change num of columns based on that
-        // (reindex segments)
-        std::vector<std::vector<long>> empty_spaces(
-            pivots.size() + 1, std::vector<long>((num_threads - 1) * block_size));
-        // Next empty index in empty_spaces
-        std::vector<long> empty_spaces_index(pivots.size() + 1, 0);
+        // This is the max number of elements that can be inserted in one table "segment"
+        int table_height = (num_threads - 1) * parameters::BLOCK_SIZE;
+
+        // Table of indexes where is the emtpy space to insert an element
+        std::vector<long> elements_insertions(num_segments * table_height);
+        std::vector<long> elements_insertions_index(num_segments, 0);
+
         // Table of elements belonging to segment
-        std::vector<std::vector<ValueType>> elements_table(
-            pivots.size() + 1, std::vector<ValueType>((num_threads - 1) * block_size));
-        // Next empty index in elements_table
-        std::vector<long> elements_table_index(pivots.size() + 1, 0);
+        std::vector<ValueType> elements_table(num_segments * table_height);
+        std::vector<long> elements_table_index(num_segments, 0);
 
         // Find first unclean segment
         int current_segment = 0;
         find_unprocessed_segment(current_segment);
 
-        std::cout << "Start parallel while" << std::endl;
-#pragma omp parallel shared(empty_spaces, empty_spaces_index, elements_table,                  \
+#pragma omp parallel shared(elements_insertions, elements_insertions_index, elements_table,                  \
                             elements_table_index, segment_idx, segment_boundary, base, pivots) \
-    firstprivate(num_segments, current_segment) num_threads(8)
+    firstprivate(num_segments, num_segments_left, current_segment) num_threads(num_threads)
         {
             // Private start and end of block for given segment
             std::vector<long> block_start(pivots.size() + 1, 0);
@@ -693,37 +693,35 @@ namespace mpqsort::impl {
             int tmp_el_segment = -1;
             int dept_segment = -1;
 
-            // Returns next unprocessed block
             auto find_unprocessed_block = [&](auto& segment) -> bool {
-                ++segment %= block_start.size();
                 for (size_t i = 0; i < block_start.size() - 1; ++i) {
-                    if (block_start[segment] >= block_end[segment])
-                        ++segment %= block_start.size();
-                    else
-                        return true;
+                    ++segment %= block_start.size();
+                    if (block_start[segment] < block_end[segment]) return true;
                 }
                 // All blocks processed
                 return false;
             };
 
-            while (num_segments > 0) {
+            while (num_segments_left > 0) {
                 // Block already marked as a "clean", so only move element in a global table
-                // This can happen only if this thread as an element belonging in this segment but is owned by another thread
+                // This can happen only if this thread as an element belonging in this segment but
+                // is owned by another thread
                 if (block_start[current_segment] == -1) {
-                    // Do not know the index of this element in other block, it will be provided by another thread after blocks clean
-                    if (tmp_el_set) { // Only if tmp_el set
+                    // Do not know the index of this element in other block, it will be provided by
+                    // another thread after blocks clean
+                    if (tmp_el_set) {  // Only if tmp_el set
                         int index;
 #pragma omp atomic capture
                         index = elements_table_index[current_segment]++;
-                        elements_table[current_segment][index] = tmp_el;
+                        elements_table[INDEX(current_segment, index, table_height)] = tmp_el;
                         tmp_el_set = false;
                         // tmp_el was from dept segment, segment no longer in dept
                         if (dept_segment != -1) {
                             // Insert element index in global table so that other threads can copy
                             // element to that place
 #pragma omp atomic capture
-                            index = empty_spaces_index[tmp_el_segment]++;
-                            empty_spaces[tmp_el_segment][index] = tmp_el_index;
+                            index = elements_insertions_index[tmp_el_segment]++;
+                            elements_insertions[INDEX(tmp_el_segment, index, table_height)] = tmp_el_index;
                             ++block_start[dept_segment];
                             dept_segment = -1;
                             tmp_el_index = -1;
@@ -731,11 +729,9 @@ namespace mpqsort::impl {
                     }
 
                     // Find next block/segment
-                    if (!find_unprocessed_block(current_segment))
-                    {
-                        if (!find_unprocessed_segment(current_segment))
-                        {
-                            num_segments = 0;
+                    if (!find_unprocessed_block(current_segment)) {
+                        if (!find_unprocessed_segment(current_segment)) {
+                            num_segments_left = 0;
                             continue;
                         }
                     }
@@ -744,16 +740,17 @@ namespace mpqsort::impl {
 #pragma omp atomic capture
                     {
                         block_start[current_segment] = segment_idx[current_segment];
-                        segment_idx[current_segment] += block_size;
+                        segment_idx[current_segment] += parameters::BLOCK_SIZE;
                     }
                     // Block end can't be greater than segment_boundary
-                    block_end[current_segment] = std::min(block_start[current_segment] + block_size,
+                    block_end[current_segment] = std::min(block_start[current_segment] + parameters::BLOCK_SIZE,
                                                           segment_boundary[current_segment]);
 
                     // All blocks taken, segment "clean" for this thread
                     if (block_start[current_segment] >= block_end[current_segment]) {
-                        --num_segments;
-                        // Set to know that this segment was already cleaned once so only insert element in a table
+                        --num_segments_left;
+                        // Set to know that this segment was already cleaned once so only insert
+                        // element in a table
                         block_start[current_segment] = -1;
                         block_end[current_segment] = -1;
                         continue;
@@ -797,7 +794,6 @@ namespace mpqsort::impl {
                 current_segment = helpers::_find_element_segment_id(pivots.begin(), pivots.size(),
                                                                     tmp_el, comp);
             }
-            std::cout << "Thread finished: " << omp_get_thread_num() << std::endl;
 
             // If was element set and all blocks were cleaned, we need to move it in a table
             if (tmp_el_set) {
@@ -806,49 +802,50 @@ namespace mpqsort::impl {
                 int index;
 #pragma omp atomic capture
                 index = elements_table_index[current_segment]++;
-                elements_table[current_segment][index] = tmp_el;
+                //elements_table[current_segment][index] = tmp_el;
+                elements_table[INDEX(current_segment, index, table_height)] = tmp_el;
                 tmp_el_set = false;
             }
 
             if (tmp_el_index != -1) {
                 int index;
 #pragma omp atomic capture
-                index = empty_spaces_index[tmp_el_segment]++;
-                empty_spaces[tmp_el_segment][index] = tmp_el_index;
+                index = elements_insertions_index[tmp_el_segment]++;
+                elements_insertions[INDEX(tmp_el_segment, index, table_height)] = tmp_el_index;
                 tmp_el_index = -1;
             }
 
-            // All segments clean from this thread perspective, but some blocks have still unprocessed elements
-            // Insert those indexes in a global arr so that other threads know where they can place their elements from a global table
+            // All segments clean from this thread perspective, but some blocks have still
+            // unprocessed elements Insert those indexes in a global arr so that other threads know
+            // where they can place their elements from a global table
             for (size_t i = 0; i < block_start.size(); ++i) {
                 // Block processed or not owned
-                if (block_start[i] == -1 || block_start[i] >= block_end[i])
-                    continue;
+                if (block_start[i] == -1 || block_start[i] >= block_end[i]) continue;
 
                 int num_of_indexes = block_end[i] - block_start[i];
                 int start;
 
-                #pragma omp atomic capture
+#pragma omp atomic capture
                 {
-                    start = empty_spaces_index[i];
-                    empty_spaces_index[i] += num_of_indexes;
+                    start = elements_insertions_index[i];
+                    elements_insertions_index[i] += num_of_indexes;
                 }
 
-                while (block_start[i] < block_end[i]) {
-                    empty_spaces[i][start] = block_start[i];
+                auto s = block_start[i], e = block_end[i];
+                while (s < e) {
+                    elements_insertions[INDEX(i, start, table_height)] = s;
 
                     ++start;
-                    ++block_start[i];
+                    ++s;
                 }
             }
         }
 
-            std::cout << "End parallel while" << std::endl;
 // Insert elements from tables in an array
 #pragma omp parallel for
-        for (size_t i = 0; i < empty_spaces_index.size(); ++i) {
-            for (int j = 0; j < empty_spaces_index[i]; ++j) {
-                base[empty_spaces[i][j]] = elements_table[i][j];
+        for (size_t i = 0; i < elements_insertions_index.size(); ++i) {
+            for (int j = 0; j < elements_insertions_index[i]; ++j) {
+                base[elements_insertions[INDEX(i, j, table_height)]] = elements_table[INDEX(i, j, table_height)];
             }
         }
 
