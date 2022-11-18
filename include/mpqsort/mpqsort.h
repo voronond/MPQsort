@@ -661,7 +661,7 @@ namespace mpqsort::impl {
 
         // Table of indexes where is the emtpy space to insert an element
         int num_threads = omp_get_max_threads();
-        int block_size = 1;
+        int block_size = 64;
         // num_segments x (T-1) * block_size
         // TODO: Some segments can be already processed, change num of columns based on that
         // (reindex segments)
@@ -675,15 +675,11 @@ namespace mpqsort::impl {
         // Next empty index in elements_table
         std::vector<long> elements_table_index(pivots.size() + 1, 0);
 
-        PRINT_VECTOR(pivots, "Pivots");
-        PRINT_VECTOR(segment_idx, "Segment indexes");
-        PRINT_VECTOR(segment_boundary, "Boundaries");
-
         // Find first unclean segment
         int current_segment = 0;
         find_unprocessed_segment(current_segment);
 
-// TODO: Debug on 2 threads only, then change to max
+        std::cout << "Start parallel while" << std::endl;
 #pragma omp parallel shared(empty_spaces, empty_spaces_index, elements_table,                  \
                             elements_table_index, segment_idx, segment_boundary, base, pivots) \
     firstprivate(num_segments, current_segment) num_threads(8)
@@ -800,30 +796,8 @@ namespace mpqsort::impl {
 
                 current_segment = helpers::_find_element_segment_id(pivots.begin(), pivots.size(),
                                                                     tmp_el, comp);
-
-                /*
-                #pragma omp critical
-                {
-                    std::cout << "THREAD: " << omp_get_thread_num() << std::endl;
-                    PRINT_ITERS(base, lp, rp, "After parallel cycle");
-                    PRINT_VECTOR(block_start, "Block starts");
-                    PRINT_VECTOR(block_end, "Block end");
-                    PRINT_VECTOR(segment_idx, "Segment indexes");
-                    //PRINT_TABLE(empty_spaces, "Empty spaces");
-                    //PRINT_TABLE(elements_table, "Elements table");
-                }
-                */
             }
-
-            #pragma omp single
-            {
-                #pragma omp critical
-                {
-                    PRINT_TABLE(elements_table, "Elements table after while");
-                    PRINT_TABLE(empty_spaces, "Empty spaces after while");
-                }
-            }
-            #pragma omp barrier
+            std::cout << "Thread finished: " << omp_get_thread_num() << std::endl;
 
             // If was element set and all blocks were cleaned, we need to move it in a table
             if (tmp_el_set) {
@@ -869,18 +843,14 @@ namespace mpqsort::impl {
             }
         }
 
-        PRINT_TABLE(elements_table, "Elements table");
-        PRINT_TABLE(empty_spaces, "Empty spaces");
-        PRINT_ITERS(base, lp, rp, "Before insert elements from tables");
+            std::cout << "End parallel while" << std::endl;
 // Insert elements from tables in an array
-//#pragma omp parallel for
+#pragma omp parallel for
         for (size_t i = 0; i < empty_spaces_index.size(); ++i) {
             for (int j = 0; j < empty_spaces_index[i]; ++j) {
                 base[empty_spaces[i][j]] = elements_table[i][j];
             }
         }
-
-        PRINT_ITERS(base, lp, rp, "After parallel partitioning");
 
         return segment_boundary;
     }

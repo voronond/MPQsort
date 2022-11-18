@@ -213,6 +213,7 @@ TEST_CASE("Test parallel partitioning") {
     int num_pivots = 3;
 
     auto check_result = [](auto boundaries, auto test_vector, auto pivots) {
+        #pragma omp parallel for
         for (size_t i = 0; i < boundaries.size() - 1; ++i) {
             long start = 0;
 
@@ -288,26 +289,26 @@ TEST_CASE("Test parallel partitioning") {
         test_vector.resize(vector_length);
     }
 
-    /*
-        SECTION("255 pivots") {
-            num_pivots = 255;
-            // Random length from 100 to 10000
-            auto vector_length = GENERATE(take(100, random(255, 10000)));
-            // Generate vector with random numbers
-            test_vector = GENERATE(chunk(10000, take(10000, random(0, 1000))));
-            test_vector.resize(vector_length);
-        }
+    SECTION("255 pivots") {
+        num_pivots = 255;
+        // Random length from 100 to 100000
+        auto vector_length = GENERATE(take(100, random(255, 100000)));
+        // Generate vector with random numbers
+        test_vector = GENERATE(chunk(100000, take(100000, random(0, 1000))));
+        test_vector.resize(vector_length);
+    }
 
-        SECTION("511 pivots") {
-            // TODO: Very slow, 255 seems way faster
-            num_pivots = 511;
-            // Random length from 100 to 10000
-            auto vector_length = GENERATE(take(100, random(511, 10000)));
-            // Generate vector with random numbers
-            test_vector = GENERATE(chunk(10000, take(10000, random(0, 10000))));
-            test_vector.resize(vector_length);
-        }
-        */
+/*
+    SECTION("511 pivots") {
+        // TODO: Very slow, 255 seems way faster
+        num_pivots = 511;
+        // Random length from 100 to 10000
+        auto vector_length = GENERATE(take(100, random(511, 10000)));
+        // Generate vector with random numbers
+        test_vector = GENERATE(chunk(10000, take(10000, random(0, 10000))));
+        test_vector.resize(vector_length);
+    }
+    */
 
     // If sample small enough, pivots are chosen like this without sampling
     auto pivots
