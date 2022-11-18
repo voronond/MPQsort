@@ -230,7 +230,13 @@ TEST_CASE("Test parallel partitioning") {
         }
     };
 
-    SECTION("Reverse order") { test_vector = {10, 9, 8, 7, 6, 5, 4, 3, 2, 1}; }
+    SECTION("Reverse order small") { test_vector = {10, 9, 8, 7, 6, 5, 4}; }
+
+    SECTION("Reverse order small 2") { test_vector = {10, 9, 8, 7}; }
+
+    SECTION("Reverse order") {
+        test_vector = {10, 9, 8, 7, 6, 5, 4, 3, 2, 1};
+    }
 
     SECTION("Already sorted") { test_vector = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}; }
 
@@ -242,7 +248,11 @@ TEST_CASE("Test parallel partitioning") {
 
     SECTION("Pivots same values") { test_vector = {4, 4, 4, 4, 1, 1, 4, 1, 6, 4, 6, 6}; }
 
-    SECTION("Two pivots same values") { test_vector = {4, 4, 4, 4, 1, 1, 4, 1, 6, 1, 6, 6}; }
+    SECTION("Two pivots same values small") { test_vector = {4, 4, 4, 1, 4, 1, 6, 1, 6}; }
+
+    SECTION("Two pivots same values") {
+        test_vector = {4, 4, 4, 4, 1, 1, 4, 1, 6, 1, 6, 6};
+    }
 
     SECTION("Random numbers and sizes") {
         // Random length from 100 to 10000

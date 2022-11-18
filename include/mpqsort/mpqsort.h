@@ -19,8 +19,12 @@
 
 #ifdef DEBUG
 #    define PRINT_ITERS(base, lp, rp, msg) mpqsort::helpers::print(base, lp, rp, msg)
+#    define PRINT_VECTOR(vec, msg) std::cout << msg << ":\n"; for (auto& el: vec) std::cout << el << " "; std::cout << std::endl
+#    define PRINT_TABLE(vec, msg) std::cout << msg << ":\n"; for (size_t i = 0; i < vec[0].size(); ++i) { for (size_t j = 0; j < vec.size(); ++j) std::cout << vec[j][i] << " "; std::cout << std::endl;}
 #else
 #    define PRINT_ITERS(base, lp, rp, msg)
+#    define PRINT_VECTOR(vec, msg)
+#    define PRINT_TABLE(vec, msg)
 #endif
 
 /**
@@ -643,11 +647,13 @@ namespace mpqsort::impl {
 
         // Returns next unprocessed segment
         auto find_unprocessed_segment = [&](auto& segment) {
+            // Move to next segment before we test for unprocessed, we do not want to return current segment!!
+            ++segment %= segment_idx.size();
             for (size_t i = 0; i < segment_idx.size(); ++i) {
                 if (segment_idx[segment] >= segment_boundary[segment])
                     ++segment %= segment_idx.size();
                 else
-                    break;
+                    return;
             }
             // All segments processed
             segment = -1;
@@ -669,6 +675,10 @@ namespace mpqsort::impl {
         // Next empty index in elements_table
         std::vector<long> elements_table_index(pivots.size() + 1, 0);
 
+        PRINT_VECTOR(pivots, "Pivots");
+        PRINT_VECTOR(segment_idx, "Segment indexes");
+        PRINT_VECTOR(segment_boundary, "Boundaries");
+
         // Find first unclean segment
         int current_segment = 0;
         find_unprocessed_segment(current_segment);
@@ -688,17 +698,19 @@ namespace mpqsort::impl {
 
             // Returns next unprocessed block
             auto find_unprocessed_block = [&](auto& segment) {
+                ++segment %= block_start.size();
                 for (size_t i = 0; i < block_start.size(); ++i) {
                     if (block_start[segment] >= block_end[segment])
-                        ++segment %= segment_idx.size();
+                        ++segment %= block_start.size();
                     else
-                        break;
+                        return;
                 }
                 // All blocks processed
                 segment = -1;
             };
 
             while (num_segments > 0) {
+                assert(current_segment != -1);
                 // Block already marked as a "clean", so only move element in a global table
                 // This can happen only if this thread as an element belonging in this segment but is owned by another thread
                 if (block_start[current_segment] == -1) {
@@ -723,13 +735,16 @@ namespace mpqsort::impl {
                         }
                     }
 
+                    auto tmp_segment = current_segment;
                     find_unprocessed_block(current_segment);
                     // If all blocks processed
                     if (current_segment == -1) {
+                        current_segment = tmp_segment;
                         find_unprocessed_segment(current_segment);
 
                         // If all segments processed end while
-                        num_segments = 0;
+                        if (current_segment == -1)
+                            num_segments = 0;
                         continue;
                     }
                 } else if (block_start[current_segment] >= block_end[current_segment]) {
@@ -748,6 +763,7 @@ namespace mpqsort::impl {
                         --num_segments;
                         // Set to know that this segment was already cleaned once so only insert element in a table
                         block_start[current_segment] = -1;
+                        block_end[current_segment] = -1;
                         // TODO: Maybe go thought blocks and then segments
                         //find_unprocessed_segment(current_segment);
                         continue;
@@ -770,8 +786,6 @@ namespace mpqsort::impl {
 
                 // All elements of this segment processed, continue with next one
                 if (block_start[current_segment] >= block_end[current_segment]) {
-                    find_unprocessed_segment(current_segment);
-                    --num_segments;
                     continue;
                 }
 
@@ -784,11 +798,18 @@ namespace mpqsort::impl {
                     // Found segment for tmp_el, swap them
                     swap(tmp_el, base[block_start[current_segment]]);
                     tmp_el_set = true;
-                    ++block_start[current_segment];
+                    ++block_start[current_segment]; // TODO: Maybe do not increment!!
                 }
 
                 current_segment = helpers::_find_element_segment_id(pivots.begin(), pivots.size(),
                                                                     tmp_el, comp);
+
+                PRINT_ITERS(base, lp, rp, "After parallel cycle");
+                PRINT_VECTOR(block_start, "Block starts");
+                PRINT_VECTOR(block_end, "Block end");
+                PRINT_VECTOR(segment_idx, "Segment indexes");
+                //PRINT_TABLE(empty_spaces, "Empty spaces");
+                //PRINT_TABLE(elements_table, "Elements table");
             }
 
             // If was element set and all blocks were cleaned, we need to move it in a table
@@ -827,13 +848,17 @@ namespace mpqsort::impl {
             }
         }
 
+        PRINT_TABLE(elements_table, "Elements table");
+        PRINT_TABLE(empty_spaces, "Empty spaces");
 // Insert elements from tables in an array
-#pragma omp parallel for
+//#pragma omp parallel for
         for (size_t i = 0; i < empty_spaces_index.size(); ++i) {
             for (int j = 0; j < empty_spaces_index[i]; ++j) {
                 base[empty_spaces[i][j]] = elements_table[i][j];
             }
         }
+
+        PRINT_ITERS(base, lp, rp, "After parallel partitioning");
 
         return segment_boundary;
     }
