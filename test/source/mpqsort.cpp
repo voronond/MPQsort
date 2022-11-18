@@ -309,8 +309,8 @@ TEST_CASE("Test parallel partitioning") {
     // If sample small enough, pivots are chosen like this without sampling
     auto pivots
         = helpers::_get_pivots(test_vector.begin(), 0, test_vector.size() - 1, num_pivots, comp);
-    auto boundaries = mpqsort::impl::_par_multiway_partition_second(num_pivots,
-        test_vector.begin(), 0, test_vector.size() - 1, comp);
+    auto boundaries = mpqsort::impl::_par_multiway_partition_second(
+        num_pivots, test_vector.begin(), 0, test_vector.size() - 1, comp);
 
     check_result(boundaries, test_vector, pivots);
 }

@@ -680,7 +680,7 @@ namespace mpqsort::impl {
         int current_segment = 0;
         find_unprocessed_segment(current_segment);
 
-#pragma omp parallel shared(elements_insertions, elements_insertions_index, elements_table,                  \
+#pragma omp parallel shared(elements_insertions, elements_insertions_index, elements_table,    \
                             elements_table_index, segment_idx, segment_boundary, base, pivots) \
     firstprivate(num_segments, num_segments_left, current_segment) num_threads(num_threads)
         {
@@ -688,7 +688,6 @@ namespace mpqsort::impl {
             std::vector<long> block_start(pivots.size() + 1, 0);
             std::vector<long> block_end(pivots.size() + 1, 0);
             ValueType tmp_el;
-            bool tmp_el_set = false;
             int tmp_el_index = -1;
             int tmp_el_segment = -1;
             int dept_segment = -1;
@@ -709,23 +708,24 @@ namespace mpqsort::impl {
                 if (block_start[current_segment] == -1) {
                     // Do not know the index of this element in other block, it will be provided by
                     // another thread after blocks clean
-                    if (tmp_el_set) {  // Only if tmp_el set
+                    if (tmp_el_index != -1) {  // Only if tmp_el set
                         int index;
 #pragma omp atomic capture
                         index = elements_table_index[current_segment]++;
                         elements_table[INDEX(current_segment, index, table_height)] = tmp_el;
-                        tmp_el_set = false;
                         // tmp_el was from dept segment, segment no longer in dept
                         if (dept_segment != -1) {
                             // Insert element index in global table so that other threads can copy
                             // element to that place
 #pragma omp atomic capture
                             index = elements_insertions_index[tmp_el_segment]++;
-                            elements_insertions[INDEX(tmp_el_segment, index, table_height)] = tmp_el_index;
+                            elements_insertions[INDEX(tmp_el_segment, index, table_height)]
+                                = tmp_el_index;
                             ++block_start[dept_segment];
                             dept_segment = -1;
-                            tmp_el_index = -1;
                         }
+
+                        tmp_el_index = -1;
                     }
 
                     // Find next block/segment
@@ -743,8 +743,9 @@ namespace mpqsort::impl {
                         segment_idx[current_segment] += parameters::BLOCK_SIZE;
                     }
                     // Block end can't be greater than segment_boundary
-                    block_end[current_segment] = std::min(block_start[current_segment] + parameters::BLOCK_SIZE,
-                                                          segment_boundary[current_segment]);
+                    block_end[current_segment]
+                        = std::min(block_start[current_segment] + parameters::BLOCK_SIZE,
+                                   segment_boundary[current_segment]);
 
                     // All blocks taken, segment "clean" for this thread
                     if (block_start[current_segment] >= block_end[current_segment]) {
@@ -760,7 +761,6 @@ namespace mpqsort::impl {
                 // Segment was in dept, save tmp_el
                 if (dept_segment == current_segment) {
                     base[block_start[current_segment]] = tmp_el;
-                    tmp_el_set = false;
                     ++block_start[current_segment];
                     dept_segment = -1;
                     tmp_el_index = -1;
@@ -783,11 +783,9 @@ namespace mpqsort::impl {
                     tmp_el_index = block_start[current_segment];
                     tmp_el_segment = current_segment;
                     tmp_el = base[block_start[current_segment]];
-                    tmp_el_set = true;
                 } else {
                     // Found segment for tmp_el, swap them
                     swap(tmp_el, base[block_start[current_segment]]);
-                    tmp_el_set = true;
                     ++block_start[current_segment];
                 }
 
@@ -795,32 +793,12 @@ namespace mpqsort::impl {
                                                                     tmp_el, comp);
             }
 
-            // If was element set and all blocks were cleaned, we need to move it in a table
-            if (tmp_el_set) {
-                current_segment = helpers::_find_element_segment_id(pivots.begin(), pivots.size(),
-                                                                    tmp_el, comp);
-                int index;
-#pragma omp atomic capture
-                index = elements_table_index[current_segment]++;
-                //elements_table[current_segment][index] = tmp_el;
-                elements_table[INDEX(current_segment, index, table_height)] = tmp_el;
-                tmp_el_set = false;
-            }
-
-            if (tmp_el_index != -1) {
-                int index;
-#pragma omp atomic capture
-                index = elements_insertions_index[tmp_el_segment]++;
-                elements_insertions[INDEX(tmp_el_segment, index, table_height)] = tmp_el_index;
-                tmp_el_index = -1;
-            }
-
             // All segments clean from this thread perspective, but some blocks have still
             // unprocessed elements Insert those indexes in a global arr so that other threads know
             // where they can place their elements from a global table
             for (size_t i = 0; i < block_start.size(); ++i) {
                 // Block processed or not owned
-                if (block_start[i] == -1 || block_start[i] >= block_end[i]) continue;
+                if (block_start[i] >= block_end[i]) continue;
 
                 int num_of_indexes = block_end[i] - block_start[i];
                 int start;
@@ -845,7 +823,8 @@ namespace mpqsort::impl {
 #pragma omp parallel for
         for (size_t i = 0; i < elements_insertions_index.size(); ++i) {
             for (int j = 0; j < elements_insertions_index[i]; ++j) {
-                base[elements_insertions[INDEX(i, j, table_height)]] = elements_table[INDEX(i, j, table_height)];
+                base[elements_insertions[INDEX(i, j, table_height)]]
+                    = elements_table[INDEX(i, j, table_height)];
             }
         }
 
