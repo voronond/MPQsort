@@ -142,7 +142,7 @@ namespace mpqsort::parameters {
      * Threads process an array in blocks to prevent false sharing and reduce number of
      * atomic/critical sections.
      */
-    static long BLOCK_SIZE = 64;
+    static long BLOCK_SIZE = 1 << 9;
     static long SEQ_THRESHOLD = 1 << 17;
     static long NO_RECURSION_THRESHOLD = 128;  // based on benchmarks
     /**
@@ -156,7 +156,7 @@ namespace mpqsort::parameters {
      * @brief Number of pivots used in multiway parallel partitioning
      * Number for pivots used to divide array in PAR_PARTITION_NUM_PIVOTS + 1 segments. This is done only once and parallel multiway qsort is called afterwards on each such segment.
      */
-    const static long PAR_PARTITION_NUM_PIVOTS = 255;
+    const static long PAR_PARTITION_NUM_PIVOTS = (1 << 7) - 1;
 
     /**
      * @brief Number of elements to chose a pivot from
