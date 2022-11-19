@@ -401,8 +401,8 @@ namespace mpqsort::helpers {
 
     // Number of pivots needs to be 2^k - 1
     template <typename RandomBaseIt, typename Comparator, typename Element>
-    inline auto _find_element_segment_id(int num_of_comparisons, RandomBaseIt base, int size, Element& el,
-                                         Comparator& comp) {
+    inline auto _find_element_segment_id(int num_of_comparisons, RandomBaseIt base, int size,
+                                         Element& el, Comparator& comp) {
         int lp = 0, rp = size - 1;
         int idx;
 
@@ -630,8 +630,8 @@ namespace mpqsort::impl {
 // Find boundaries of segments
 #pragma omp parallel for reduction(+ : idx_ptr[:num_segments])
         for (long i = lp; i <= rp; ++i) {
-            auto segment_id
-                = helpers::_find_element_segment_id(num_element_comparisons, pivots, pivots.size(), base[i], comp);
+            auto segment_id = helpers::_find_element_segment_id(num_element_comparisons, pivots,
+                                                                pivots.size(), base[i], comp);
             ++idx_ptr[segment_id];
         }
 
@@ -789,13 +789,13 @@ namespace mpqsort::impl {
                     ++block_start[current_segment];
                 }
 
-                current_segment = helpers::_find_element_segment_id(num_element_comparisons, pivots.begin(), pivots.size(),
-                                                                    tmp_el, comp);
+                current_segment = helpers::_find_element_segment_id(
+                    num_element_comparisons, pivots.begin(), pivots.size(), tmp_el, comp);
             }
 
             // All segments clean from this thread perspective, but some blocks have still
-            // unprocessed elements. Insert those indexes in a global table so that other threads know
-            // where they can place their elements from a global table
+            // unprocessed elements. Insert those indexes in a global table so that other threads
+            // know where they can place their elements from a global table
             for (size_t i = 0; i < block_start.size(); ++i) {
                 if (block_start[i] >= block_end[i]) continue;
 
