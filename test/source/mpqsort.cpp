@@ -145,64 +145,67 @@ TEST_CASE("Find a segment ID for an element") {
     SECTION("One pivot") {
         std::vector<int> pivots{3};
         auto comparator = std::less<int>();
+        int num_comparisons = std::log2(pivots.size());
 
         int element = 1;
         REQUIRE(
-            helpers::_find_element_segment_id(pivots.begin(), pivots.size(), element, comparator)
+            helpers::_find_element_segment_id(num_comparisons, pivots.begin(), pivots.size(), element, comparator)
             == 0);
         element = 3;
         REQUIRE(
-            helpers::_find_element_segment_id(pivots.begin(), pivots.size(), element, comparator)
+            helpers::_find_element_segment_id(num_comparisons, pivots.begin(), pivots.size(), element, comparator)
             == 1);
         element = 4;
         REQUIRE(
-            helpers::_find_element_segment_id(pivots.begin(), pivots.size(), element, comparator)
+            helpers::_find_element_segment_id(num_comparisons, pivots.begin(), pivots.size(), element, comparator)
             == 1);
     }
 
     SECTION("Three pivots") {
         std::vector<int> pivots{3, 6, 9};
         auto comparator = std::less<int>();
+        int num_comparisons = std::log2(pivots.size());
 
         int element = 1;
         REQUIRE(
-            helpers::_find_element_segment_id(pivots.begin(), pivots.size(), element, comparator)
+            helpers::_find_element_segment_id(num_comparisons, pivots.begin(), pivots.size(), element, comparator)
             == 0);
         element = 3;
         REQUIRE(
-            helpers::_find_element_segment_id(pivots.begin(), pivots.size(), element, comparator)
+            helpers::_find_element_segment_id(num_comparisons, pivots.begin(), pivots.size(), element, comparator)
             == 1);
         element = 7;
         REQUIRE(
-            helpers::_find_element_segment_id(pivots.begin(), pivots.size(), element, comparator)
+            helpers::_find_element_segment_id(num_comparisons, pivots.begin(), pivots.size(), element, comparator)
             == 2);
         element = 10;
         REQUIRE(
-            helpers::_find_element_segment_id(pivots.begin(), pivots.size(), element, comparator)
+            helpers::_find_element_segment_id(num_comparisons, pivots.begin(), pivots.size(), element, comparator)
             == 3);
     }
 
     SECTION("Three pivots: two are the same") {
         std::vector<int> pivots{3, 6, 6};
         auto comparator = std::less<int>();
+        int num_comparisons = std::log2(pivots.size());
 
         int element = 1;
         REQUIRE(
-            helpers::_find_element_segment_id(pivots.begin(), pivots.size(), element, comparator)
+            helpers::_find_element_segment_id(num_comparisons, pivots.begin(), pivots.size(), element, comparator)
             == 0);
         element = 3;
         REQUIRE(
-            helpers::_find_element_segment_id(pivots.begin(), pivots.size(), element, comparator)
+            helpers::_find_element_segment_id(num_comparisons, pivots.begin(), pivots.size(), element, comparator)
             == 1);
         element = 7;
         REQUIRE(
-            helpers::_find_element_segment_id(pivots.begin(), pivots.size(), element, comparator)
+            helpers::_find_element_segment_id(num_comparisons, pivots.begin(), pivots.size(), element, comparator)
             == 3);
         // If two or more consequent pivots are the same, there is not any segment in between them
         // In this case, segment id 2 is never used
         element = 6;
         REQUIRE(
-            helpers::_find_element_segment_id(pivots.begin(), pivots.size(), element, comparator)
+            helpers::_find_element_segment_id(num_comparisons, pivots.begin(), pivots.size(), element, comparator)
             == 3);
     }
 }

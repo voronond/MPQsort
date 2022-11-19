@@ -401,13 +401,12 @@ namespace mpqsort::helpers {
 
     // Number of pivots needs to be 2^k - 1
     template <typename RandomBaseIt, typename Comparator, typename Element>
-    inline auto _find_element_segment_id(RandomBaseIt base, long size, Element& el,
+    inline auto _find_element_segment_id(int num_of_comparisons, RandomBaseIt base, int size, Element& el,
                                          Comparator& comp) {
-        long lp = 0, rp = size - 1;
-        long num_of_comparisons = static_cast<long>(std::log2(lp + rp));
-        long idx;
+        int lp = 0, rp = size - 1;
+        int idx;
 
-        for (long i = 0; i < num_of_comparisons; ++i) {
+        for (int i = 0; i < num_of_comparisons; ++i) {
             idx = (lp + rp) / 2;
 
             if (comp(el, base[idx])) {
@@ -618,6 +617,8 @@ namespace mpqsort::impl {
 
         const int num_segments = num_pivots + 1;
         int num_segments_left = num_segments;
+        // Precompute number of comparisons
+        int num_element_comparisons = std::log2(num_pivots);
 
         // Get pivots
         auto pivots = helpers::_get_pivots(base, lp, rp, num_pivots, comp);
@@ -630,7 +631,7 @@ namespace mpqsort::impl {
 #pragma omp parallel for reduction(+ : idx_ptr[:num_segments])
         for (long i = lp; i <= rp; ++i) {
             auto segment_id
-                = helpers::_find_element_segment_id(pivots, pivots.size(), base[i], comp);
+                = helpers::_find_element_segment_id(num_element_comparisons, pivots, pivots.size(), base[i], comp);
             ++idx_ptr[segment_id];
         }
 
@@ -648,10 +649,9 @@ namespace mpqsort::impl {
 
         // Returns if element belongs to given segment
         auto element_in_segment = [&](auto& el, size_t segment) {
-            if (segment == 0) return comp(el, pivots.front());
-            if (segment == segment_idx.size() - 1) return !comp(el, pivots.back());
-
-            return !comp(el, pivots[segment - 1]) && comp(el, pivots[segment]);
+            // Compound logical comparison to prevent redundant branching
+            return (segment == 0 || !comp(el, pivots[segment - 1]))
+                   && (segment == segment_idx.size() || comp(el, pivots[segment]));
         };
 
         auto find_unprocessed_segment = [&](auto& segment) -> bool {
@@ -789,15 +789,14 @@ namespace mpqsort::impl {
                     ++block_start[current_segment];
                 }
 
-                current_segment = helpers::_find_element_segment_id(pivots.begin(), pivots.size(),
+                current_segment = helpers::_find_element_segment_id(num_element_comparisons, pivots.begin(), pivots.size(),
                                                                     tmp_el, comp);
             }
 
             // All segments clean from this thread perspective, but some blocks have still
-            // unprocessed elements Insert those indexes in a global arr so that other threads know
+            // unprocessed elements. Insert those indexes in a global table so that other threads know
             // where they can place their elements from a global table
             for (size_t i = 0; i < block_start.size(); ++i) {
-                // Block processed or not owned
                 if (block_start[i] >= block_end[i]) continue;
 
                 int num_of_indexes = block_end[i] - block_start[i];
