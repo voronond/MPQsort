@@ -154,7 +154,8 @@ namespace mpqsort::parameters {
 
     /**
      * @brief Number of pivots used in multiway parallel partitioning
-     * Number for pivots used to divide array in PAR_PARTITION_NUM_PIVOTS + 1 segments. This is done only once and parallel multiway qsort is called afterwards on each such segment.
+     * Number for pivots used to divide array in PAR_PARTITION_NUM_PIVOTS + 1 segments. This is done
+     * only once and parallel multiway qsort is called afterwards on each such segment.
      */
     const static long PAR_PARTITION_NUM_PIVOTS = (1 << 7) - 1;
 
@@ -570,9 +571,12 @@ namespace mpqsort::impl {
         while (rp - lp > parameters::NO_RECURSION_THRESHOLD && depth > 0) {
             auto [index_p1, index_p2, index_p3]
                 = _seq_multiway_partition_three_pivots(base, lp, rp, comp);
+#pragma omp task if (index_p1 - lp > parameters::SEQ_THRESHOLD)
             _seq_multiway_qsort_inner_waterloo(pivot_num, base, lp, index_p1 - 1, comp, depth - 1);
+#pragma omp task if (index_p2 - index_p1 > parameters::SEQ_THRESHOLD)
             _seq_multiway_qsort_inner_waterloo(pivot_num, base, index_p1 + 1, index_p2 - 1, comp,
                                                depth - 1);
+#pragma omp task if (index_p3 - index_p2 > parameters::SEQ_THRESHOLD)
             _seq_multiway_qsort_inner_waterloo(pivot_num, base, index_p2 + 1, index_p3 - 1, comp,
                                                depth - 1);
             lp = index_p3 + 1;
@@ -857,7 +861,8 @@ namespace mpqsort::impl {
         omp_set_max_active_levels(std::numeric_limits<int>::max());
 
         // Should not normally happen, but we set SEQ_THRESHOLD to 0 during testing
-        if (last - first > std::max(parameters::SEQ_THRESHOLD, parameters::PAR_PARTITION_NUM_PIVOTS)) {
+        if (last - first
+            > std::max(parameters::SEQ_THRESHOLD, parameters::PAR_PARTITION_NUM_PIVOTS)) {
             _par_multiway_qsort_inner(pivot_num, cores, first, 0, last - first - 1, comp);
         } else {
             _seq_multiway_qsort(3, first, last, comp);

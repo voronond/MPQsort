@@ -39,8 +39,7 @@ using ALLOWED_EXECUTION_POLICIES
                  decltype(execution::seq)>;
 
 // Declare parallel execution policies
-using PARALLEL_EXECUTION_POLICIES
-    = std::tuple<decltype(execution::par)>;
+using PARALLEL_EXECUTION_POLICIES = std::tuple<decltype(execution::par)>;
 
 // Declare sequential execution policies
 using SEQUENTIAL_EXECUTION_POLICIES
