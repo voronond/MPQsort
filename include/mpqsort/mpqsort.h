@@ -47,7 +47,6 @@ namespace mpqsort::execution {
     class sequenced_policy_three_way {};
     class sequenced_policy_four_way {};
     class sequenced_policy_max_way {};
-    class parallel_policy_three_way {};
     class parallel_policy_max_way {};
 
     // TODO: maybe add unseq if possible (standard and self defined)
@@ -78,17 +77,6 @@ namespace mpqsort::execution {
      * determined by the algorithm
      */
     inline constexpr sequenced_policy_max_way seq_max_way{};
-
-    /**
-     * @brief Parallel execution policy using two pivots
-     */
-    inline constexpr parallel_policy_three_way par_three_way{};
-
-    /**
-     * @brief Parallel execution policy using multiple pivots. The number of pivots will be
-     * determined by the algorithm
-     */
-    inline constexpr parallel_policy_max_way par_max_way{};
 
     // Define own type trait to determine if we got policy type
 
@@ -130,11 +118,8 @@ namespace mpqsort::execution {
     template <> struct _is_execution_policy_helper<sequenced_policy_three_way> : std::true_type {};
     template <> struct _is_execution_policy_helper<sequenced_policy_four_way> : std::true_type {};
     template <> struct _is_execution_policy_helper<sequenced_policy_max_way> : std::true_type {};
-    template <> struct _is_execution_policy_helper<parallel_policy_three_way> : std::true_type {};
     template <> struct _is_execution_policy_helper<parallel_policy_max_way> : std::true_type {};
 
-    template <> struct _is_parallel_execution_policy_helper<parallel_policy_three_way>
-        : std::true_type {};
     template <> struct _is_parallel_execution_policy_helper<parallel_policy_max_way>
         : std::true_type {};
 
@@ -158,7 +143,7 @@ namespace mpqsort::parameters {
      * atomic/critical sections.
      */
     static long BLOCK_SIZE = 64;
-    static size_t SEQ_THRESHOLD = 1 << 17;
+    static long SEQ_THRESHOLD = 1 << 17;
     static long NO_RECURSION_THRESHOLD = 128;  // based on benchmarks
     /**
      * @brief Maximum supported number of pivots by MPQsort
@@ -166,6 +151,12 @@ namespace mpqsort::parameters {
      * changed by the user.
      */
     const static long MAX_NUMBER_OF_PIVOTS = 3;  // can't be changed during runtime
+
+    /**
+     * @brief Number of pivots used in multiway parallel partitioning
+     * Number for pivots used to divide array in PAR_PARTITION_NUM_PIVOTS + 1 segments. This is done only once and parallel multiway qsort is called afterwards on each such segment.
+     */
+    const static long PAR_PARTITION_NUM_PIVOTS = 255;
 
     /**
      * @brief Number of elements to chose a pivot from
@@ -609,9 +600,9 @@ namespace mpqsort::impl {
     }
 
     // PAR
-    template <typename RandomBaseIt, typename Compare>
-    auto _par_multiway_partition_second(long num_pivots, RandomBaseIt base, long lp, long rp,
-                                        Compare& comp) {
+    template <typename RandomBaseIt, typename Cores, typename Compare>
+    auto _par_multiway_partition(long num_pivots, Cores cores, RandomBaseIt base, long lp, long rp,
+                                 Compare& comp) {
         using std::swap;
         using ValueType = typename std::iterator_traits<RandomBaseIt>::value_type;
 
@@ -663,10 +654,8 @@ namespace mpqsort::impl {
             return false;
         };
 
-        // Set max number of threads to work in parallel
-        int num_threads = omp_get_max_threads();
         // This is the max number of elements that can be inserted in one table "segment"
-        int table_height = (num_threads - 1) * parameters::BLOCK_SIZE;
+        int table_height = (cores - 1) * parameters::BLOCK_SIZE;
 
         // Table of indexes where is the emtpy space to insert an element
         std::vector<long> elements_insertions(num_segments * table_height);
@@ -682,7 +671,7 @@ namespace mpqsort::impl {
 
 #pragma omp parallel shared(elements_insertions, elements_insertions_index, elements_table,    \
                             elements_table_index, segment_idx, segment_boundary, base, pivots) \
-    firstprivate(num_segments, num_segments_left, current_segment) num_threads(num_threads)
+    firstprivate(num_segments, num_segments_left, current_segment) num_threads(cores)
         {
             // Private start and end of block for given segment
             std::vector<long> block_start(pivots.size() + 1, 0);
@@ -830,57 +819,29 @@ namespace mpqsort::impl {
         return segment_boundary;
     }
 
-    template <typename NumPivot, typename RandomBaseIt, typename Compare>
-    auto _par_multiway_partition(NumPivot pivot_num, RandomBaseIt base, size_t lp, size_t rp,
-                                 Compare& comp) {
-        // TODO: when multiple pivots supported
-        // WIT
-        UNUSED(pivot_num);
-        using std::swap;
+    template <typename NumPivot, typename Cores, typename RandomBaseIt, typename Compare>
+    void _par_multiway_qsort_inner(NumPivot pivot_num, Cores cores, RandomBaseIt base, size_t lp,
+                                   size_t rp, Compare& comp) {
+        // Parallel multiway partition using 2^k - 1 pivots
+        auto boundaries = _par_multiway_partition(pivot_num, cores, base, lp, rp, comp);
 
-        // Last element as pivot
-        // TODO: Select random pivots
-        auto pivot = base[rp];  // Access last element value
-        // Indexes
-        auto i = lp;
-        auto j = rp - 1;
+        // Create ranges {start, end} for segments
+        std::vector<std::pair<long, long>> segment_ranges(boundaries.size());
+        for (size_t i = 1; i < boundaries.size(); ++i)
+            segment_ranges.emplace_back(std::make_pair(boundaries[i - 1], boundaries[i]));
 
-        while (i < j) {
-            if (!comp(base[i], pivot) && comp(base[j], pivot)) {
-                std::swap(base[i], base[j]);
-                ++i;
-                --j;
-            } else {
-                if (comp(base[i], pivot)) i++;
-                if (!comp(base[j], pivot)) j--;
-            }
-        }
+        // Sort segments based on their length from the longest to shortest
+        std::sort(segment_ranges.begin(), segment_ranges.end(), [](const auto& p1, const auto& p2) {
+            return (p1.second - p1.first) > (p2.second - p2.first);
+        });
 
-        if (comp(base[j], pivot)) ++j;
-        std::swap(base[j], base[rp]);
-
-        return j;
-    }
-
-    template <typename NumPivot, typename RandomBaseIt, typename Compare>
-    void _par_multiway_qsort_inner(NumPivot pivot_num, RandomBaseIt base, size_t lp, size_t rp,
-                                   Compare& comp) {
-        // TODO: when multiple pivots supported
-        UNUSED(pivot_num);
-        while (lp < rp) {
-            if ((rp - lp) <= parameters::SEQ_THRESHOLD) {
-                std::sort(base + lp, base + rp + 1, comp);
-                return;
-            }
-
-            size_t r = _par_multiway_partition(pivot_num, base, lp, rp, comp);
-            PRINT_ITERS(base, lp, rp, "After partitioning");
-            // Sort if more that 1 elements
-            if ((r - lp) > 1) {
-#pragma omp task
-                _par_multiway_qsort_inner(pivot_num, base, lp, r - 1, comp);
-            }
-            lp = r + 1;
+        // Parallel multiway sort of each segment
+// TODO: Decide if use 2 or 3 pivots sort
+#pragma omp parallel for schedule(dynamic)
+        for (size_t i = 0; i < segment_ranges.size(); i++) {
+            _seq_multiway_qsort_inner_waterloo(3, base, segment_ranges[i].first,
+                                               segment_ranges[i].second - 1, comp,
+                                               1.5 * std::log(rp - lp) / std::log(4));
         }
     }
 
@@ -892,21 +853,15 @@ namespace mpqsort::impl {
                              Compare comp = Compare()) {
         if (last - first <= 1) return;
 
-        PRINT_ITERS(first, 0, last - first - 1, "START");
-        UNUSED(pivot_num);
-        UNUSED(cores);
+        // Allow MAX nested parallelism
+        omp_set_max_active_levels(std::numeric_limits<int>::max());
 
-        // Set OpenMP parameters
-        omp_set_max_active_levels(std::numeric_limits<int>::max());  // Allow nested parallelism
-                                                                     // omp_set_nested(1);
-#pragma omp parallel firstprivate(pivot_num, first, last, comp) num_threads(cores)
-        {
-#pragma omp single
-            // TODO: change when multiple pivots supported!!!
-            // Convert iterators for more general format
-            _par_multiway_qsort_inner(1, first, 0, last - first - 1, comp);
+        // Should not normally happen, but we set SEQ_THRESHOLD to 0 during testing
+        if (last - first > std::max(parameters::SEQ_THRESHOLD, parameters::PAR_PARTITION_NUM_PIVOTS)) {
+            _par_multiway_qsort_inner(pivot_num, cores, first, 0, last - first - 1, comp);
+        } else {
+            _seq_multiway_qsort(3, first, last, comp);
         }
-        PRINT_ITERS(first, 0, last - first - 1, "END");
     }
 
     // Wrapper for different arguments
@@ -914,10 +869,7 @@ namespace mpqsort::impl {
               typename Compare = std::less<typename std::iterator_traits<RandomIt>::value_type>>
     void _par_multiway_qsort(NumPivot pivot_num, RandomIt first, RandomIt last,
                              Compare comp = Compare()) {
-        // Use all available cores on a machine
-        // TODO: Change when multiple pivots supported!!!
-        UNUSED(pivot_num);
-        _par_multiway_qsort(1, omp_get_num_procs(), first, last, comp);
+        _par_multiway_qsort(pivot_num, omp_get_max_threads(), first, last, comp);
     }
 
     // Call sort based on policy type
@@ -945,15 +897,7 @@ namespace mpqsort::impl {
             _seq_multiway_qsort(parameters::MAX_NUMBER_OF_PIVOTS, std::forward<T>(args)...);
         } else if constexpr (helpers::_is_same_decay_v<ExecutionPolicy, decltype(execution::par)>) {
             // Call with one pivot
-            _par_multiway_qsort(1, std::forward<T>(args)...);
-        } else if constexpr (helpers::_is_same_decay_v<ExecutionPolicy,
-                                                       decltype(execution::par_three_way)>) {
-            // Call with two pivots
-            _par_multiway_qsort(2, std::forward<T>(args)...);
-        } else if constexpr (helpers::_is_same_decay_v<ExecutionPolicy,
-                                                       decltype(execution::par_max_way)>) {
-            // Let algorithm decide how many pivots to use
-            _par_multiway_qsort(parameters::MAX_NUMBER_OF_PIVOTS, std::forward<T>(args)...);
+            _par_multiway_qsort(parameters::PAR_PARTITION_NUM_PIVOTS, std::forward<T>(args)...);
         } else {
             throw std::invalid_argument(
                 "Unknown policy. This should never happen as we test policy type at a beginning of "

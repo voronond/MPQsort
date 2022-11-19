@@ -22,9 +22,8 @@ struct _TAG {
     const std::string SEQ_MULTIWAY = "[seq_multiway_sort]";
     const std::string SEQ_ALL = SEQ + SEQ_three_way + SEQ_MULTIWAY;
     const std::string PAR = "[par_sort]";
-    const std::string PAR_three_way = "[par_three_way_sort]";
     const std::string PAR_MULTIWAY = "[par_multiway_sort]";
-    const std::string PAR_ALL = PAR + PAR_three_way + PAR_MULTIWAY;
+    const std::string PAR_ALL = PAR + PAR_MULTIWAY;
     const std::string SORT_ALL = SEQ_ALL + PAR_ALL;
 } TAG;
 
@@ -35,15 +34,13 @@ CATCH_REGISTER_TAG_ALIAS("[@sort_all]", TAG.SORT_ALL.c_str())
 
 // Declare allowed execution policies
 using ALLOWED_EXECUTION_POLICIES
-    = std::tuple<decltype(execution::par_three_way), decltype(execution::par_max_way),
-                 decltype(execution::par), decltype(execution::seq_three_way),
+    = std::tuple<decltype(execution::par), decltype(execution::seq_three_way),
                  decltype(execution::seq_four_way), decltype(execution::seq_max_way),
                  decltype(execution::seq)>;
 
 // Declare parallel execution policies
 using PARALLEL_EXECUTION_POLICIES
-    = std::tuple<decltype(execution::par_three_way), decltype(execution::par_max_way),
-                 decltype(execution::par)>;
+    = std::tuple<decltype(execution::par)>;
 
 // Declare sequential execution policies
 using SEQUENTIAL_EXECUTION_POLICIES
@@ -290,10 +287,10 @@ TEST_CASE("Test parallel partitioning") {
 
     SECTION("255 pivots") {
         num_pivots = 255;
-        // Random length from 100 to 100000
-        auto vector_length = GENERATE(take(100, random(255, 100000)));
+        // Random length from 100 to 10000
+        auto vector_length = GENERATE(take(100, random(255, 10000)));
         // Generate vector with random numbers
-        test_vector = GENERATE(chunk(100000, take(100000, random(0, 1000))));
+        test_vector = GENERATE(chunk(10000, take(10000, random(0, 1000))));
         test_vector.resize(vector_length);
     }
 
@@ -312,8 +309,8 @@ TEST_CASE("Test parallel partitioning") {
     // If sample small enough, pivots are chosen like this without sampling
     auto pivots
         = helpers::_get_pivots(test_vector.begin(), 0, test_vector.size() - 1, num_pivots, comp);
-    auto boundaries = mpqsort::impl::_par_multiway_partition_second(
-        num_pivots, test_vector.begin(), 0, test_vector.size() - 1, comp);
+    auto boundaries = mpqsort::impl::_par_multiway_partition(
+        num_pivots, omp_get_max_threads(), test_vector.begin(), 0, test_vector.size() - 1, comp);
 
     check_result(boundaries, test_vector, pivots);
 }
