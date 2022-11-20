@@ -948,7 +948,6 @@ namespace mpqsort::impl {
             // Let algorithm decide how many pivots to use
             _seq_multiway_qsort(parameters::MAX_NUMBER_OF_PIVOTS, std::forward<T>(args)...);
         } else if constexpr (helpers::_is_same_decay_v<ExecutionPolicy, decltype(execution::par)>) {
-            // Call with one pivot
             _par_multiway_qsort(parameters::PAR_PARTITION_NUM_PIVOTS, std::forward<T>(args)...);
         } else {
             throw std::invalid_argument(

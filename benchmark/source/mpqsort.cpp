@@ -229,7 +229,7 @@ struct RotatedOrderVectorFixture : public RandomVectorFixture<T, Size, From, To>
 
 // Parameters tuning par mpqsort
 #define mpqsort_parameters_tuning mpqsort_parameters_tuning
-#define register_bench_mpqsort_parameters_tuning(name)                                           \
+#define register_bench_mpqsort_parameters_tuning(name) \
     register_bench_int_random(name, small_size_threshold##_##100000000, 100000000, -1, -1);
 
 // Run std sort benchmarks
@@ -324,7 +324,7 @@ register_bench_small_values_range(mpqsort_par_sort);
             mpqsort::parameters::BLOCK_SIZE = state.range(0);                                      \
             mpqsort::parameters::SEQ_THRESHOLD = state.range(1);                                   \
             mpqsort::parameters::NO_RECURSION_THRESHOLD = state.range(2);                          \
-            mpqsort::parameters::PAR_PARTITION_NUM_PIVOTS = state.range(3);                        \
+            mpqsort::parameters::PAR_PARTITION_NUM_PIVOTS = state.range(3) - 1;                    \
             mpqsort::parameters::ONE_PIVOT_SAMPLE_SIZE = state.range(4);                           \
             state.ResumeTiming();                                                                  \
             mpqsort::sort(mpqsort::execution::par, vec.begin(), vec.end());                        \
@@ -338,11 +338,11 @@ register_bench_small_values_range(mpqsort_par_sort);
         ->MeasureProcessCPUTime()                                                                  \
         ->UseRealTime()                                                                            \
         ->Name(str(BM_mpqsort_par_sort_parameters_tuning_##dataType##_##type##_##bench))           \
-        ->ArgsProduct({benchmark::CreateRange(64, 8192, 2),                                        \
-                       benchmark::CreateRange(1 << 14, 1 << 18, 2),                                \
+        ->ArgsProduct({benchmark::CreateRange(64, 4096, 2),                                        \
+                       benchmark::CreateRange(1 << 15, 1 << 18, 2),                                \
                        benchmark::CreateRange(32, 512, 2),                                         \
-                       benchmark::CreateRange(32, 512, 2),                                         \
-                       {3, 5, 8, 12, 15, 20, 25, 30}});
+                       benchmark::CreateRange(64, 256, 2),                                         \
+                       {5, 10, 15, 20, 25, 30}});
 
 register_bench_mpqsort_parameters_tuning(mpqsort_par_sort_parameters_tuning);
 
