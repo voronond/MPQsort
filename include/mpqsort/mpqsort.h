@@ -473,13 +473,12 @@ namespace mpqsort::impl {
     }
 
     template <typename RandomBaseIt, typename Compare>
-    void _seq_multiway_qsort_inner_ybb(RandomBaseIt base, long lp, long rp,
-                                       Compare& comp, long depth) {
+    void _seq_multiway_qsort_inner_ybb(RandomBaseIt base, long lp, long rp, Compare& comp,
+                                       long depth) {
         while (rp - lp > parameters::NO_RECURSION_THRESHOLD && depth > 0) {
             auto [index_p1, index_p2] = _seq_multiway_partition_two_pivots(base, lp, rp, comp);
             _seq_multiway_qsort_inner_ybb(base, lp, index_p1 - 1, comp, depth - 1);
-            _seq_multiway_qsort_inner_ybb(base, index_p1 + 1, index_p2 - 1, comp,
-                                          depth - 1);
+            _seq_multiway_qsort_inner_ybb(base, index_p1 + 1, index_p2 - 1, comp, depth - 1);
             lp = index_p2 + 1;
         }
 
@@ -566,20 +565,15 @@ namespace mpqsort::impl {
     }
 
     template <typename RandomBaseIt, typename Compare>
-    void _seq_multiway_qsort_inner_waterloo(RandomBaseIt base, long lp, long rp,
-                                            Compare& comp, long depth) {
+    void _seq_multiway_qsort_inner_waterloo(RandomBaseIt base, long lp, long rp, Compare& comp,
+                                            long depth) {
         while (rp - lp > parameters::NO_RECURSION_THRESHOLD && depth > 0) {
-            // Structured binding not supported by some compilers when pragma used
-            auto indexes
-                = _seq_multiway_partition_three_pivots(base, lp, rp, comp);
-#pragma omp task if (std::get<0>(indexes) - lp > parameters::SEQ_THRESHOLD)
+            auto indexes = _seq_multiway_partition_three_pivots(base, lp, rp, comp);
             _seq_multiway_qsort_inner_waterloo(base, lp, std::get<0>(indexes) - 1, comp, depth - 1);
-#pragma omp task if (std::get<1>(indexes) - std::get<0>(indexes) > parameters::SEQ_THRESHOLD)
-            _seq_multiway_qsort_inner_waterloo(base, std::get<0>(indexes) + 1, std::get<1>(indexes) - 1, comp,
-                                               depth - 1);
-#pragma omp task if (std::get<2>(indexes) - std::get<1>(indexes) > parameters::SEQ_THRESHOLD)
-            _seq_multiway_qsort_inner_waterloo(base, std::get<1>(indexes) + 1, std::get<2>(indexes) - 1, comp,
-                                               depth - 1);
+            _seq_multiway_qsort_inner_waterloo(base, std::get<0>(indexes) + 1,
+                                               std::get<1>(indexes) - 1, comp, depth - 1);
+            _seq_multiway_qsort_inner_waterloo(base, std::get<1>(indexes) + 1,
+                                               std::get<2>(indexes) - 1, comp, depth - 1);
             lp = std::get<2>(indexes) + 1;
         }
 
@@ -605,6 +599,47 @@ namespace mpqsort::impl {
     }
 
     // PAR
+    template <typename RandomBaseIt, typename Compare>
+    void _par_multiway_qsort_inner_waterloo(RandomBaseIt base, long lp, long rp, Compare& comp,
+                                            long depth) {
+        // Only recursive calling is in parallel, partitioning does not need to be thanks to
+        // multiway_parallel_partitioning at the beginning
+        while (rp - lp > parameters::NO_RECURSION_THRESHOLD && depth > 0) {
+            auto indexes = _seq_multiway_partition_three_pivots(base, lp, rp, comp);
+
+            if (std::get<0>(indexes) - lp > parameters::SEQ_THRESHOLD) {
+#pragma omp task
+                _par_multiway_qsort_inner_waterloo(base, lp, std::get<0>(indexes) - 1, comp,
+                                                   depth - 1);
+            } else {
+                _seq_multiway_qsort_inner_waterloo(base, lp, std::get<0>(indexes) - 1, comp,
+                                                   depth - 1);
+            }
+
+            if (std::get<1>(indexes) - std::get<0>(indexes) > parameters::SEQ_THRESHOLD) {
+#pragma omp task
+                _par_multiway_qsort_inner_waterloo(base, std::get<0>(indexes) + 1,
+                                                   std::get<1>(indexes) - 1, comp, depth - 1);
+            } else {
+                _seq_multiway_qsort_inner_waterloo(base, std::get<0>(indexes) + 1,
+                                                   std::get<1>(indexes) - 1, comp, depth - 1);
+            }
+
+            if (std::get<2>(indexes) - std::get<1>(indexes) > parameters::SEQ_THRESHOLD) {
+#pragma omp task
+                _par_multiway_qsort_inner_waterloo(base, std::get<1>(indexes) + 1,
+                                                   std::get<2>(indexes) - 1, comp, depth - 1);
+            } else {
+                _seq_multiway_qsort_inner_waterloo(base, std::get<1>(indexes) + 1,
+                                                   std::get<2>(indexes) - 1, comp, depth - 1);
+            }
+
+            lp = std::get<2>(indexes) + 1;
+        }
+
+        helpers::_heap_insertion_sort(base, lp, rp, comp);
+    }
+
     template <typename RandomBaseIt, typename Cores, typename Compare>
     auto _par_multiway_partition(long num_pivots, Cores cores, RandomBaseIt base, long lp, long rp,
                                  Compare& comp) {
