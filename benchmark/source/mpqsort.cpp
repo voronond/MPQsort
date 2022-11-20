@@ -45,7 +45,7 @@ template <typename T, long Size = -1, int From = -1, int To = -1> struct VectorF
     auto VectorSizeToFillHalfMemory() const {
 #ifdef TESTING
         // return 100000000;
-        return 10000000;
+        return 100000000;
         // return 8 * 1024 * 1024 * (1024 / sizeof(double));
 #else
         auto pages = sysconf(_SC_PHYS_PAGES);
@@ -227,6 +227,11 @@ struct RotatedOrderVectorFixture : public RandomVectorFixture<T, Size, From, To>
     register_bench_int_random(name, small_size_threshold##_##100000000, 100000000, -1, -1); \
     register_bench_int_random(name, small_size_threshold##_##500000000, 500000000, -1, -1);
 
+// Parameters tuning par mpqsort
+#define mpqsort_parameters_tuning mpqsort_parameters_tuning
+#define register_bench_mpqsort_parameters_tuning(name)                                           \
+    register_bench_int_random(name, small_size_threshold##_##100000000, 100000000, -1, -1);
+
 // Run std sort benchmarks
 #define std_sort(dataType, bench, type, size, from, to)                                          \
     BENCHMARK_TEMPLATE_DEFINE_F(dataType##VectorFixture,                                         \
@@ -303,6 +308,43 @@ register_bench_small_sizes(std_parallel_sort);
 register_bench_default(mpqsort_par_sort);
 register_bench_small_sizes(mpqsort_par_sort);
 register_bench_small_values_range(mpqsort_par_sort);
+
+// Run mpqsort parallel benchmarks parameters tuning
+// Arguments passed in this order:
+// BLOCK_SIZE, SEQ_THRESHOLD, NO_RECURSION_THRESHOLD, PAR_PARTITION_NUM_PIVOTS,
+// ONE_PIVOT_SAMPLE_SIZE
+#define mpqsort_par_sort_parameters_tuning(dataType, bench, type, size, from, to)                  \
+    BENCHMARK_TEMPLATE_DEFINE_F(                                                                   \
+        dataType##VectorFixture,                                                                   \
+        BM_mpqsort_par_sort_parameters_tuning_##dataType##_##type##_##bench, type, size, from, to) \
+    (benchmark::State & state) {                                                                   \
+        for (auto _ : state) {                                                                     \
+            state.PauseTiming();                                                                   \
+            Prepare();                                                                             \
+            mpqsort::parameters::BLOCK_SIZE = state.range(0);                                      \
+            mpqsort::parameters::SEQ_THRESHOLD = state.range(1);                                   \
+            mpqsort::parameters::NO_RECURSION_THRESHOLD = state.range(2);                          \
+            mpqsort::parameters::PAR_PARTITION_NUM_PIVOTS = state.range(3);                        \
+            mpqsort::parameters::ONE_PIVOT_SAMPLE_SIZE = state.range(4);                           \
+            state.ResumeTiming();                                                                  \
+            mpqsort::sort(mpqsort::execution::par, vec.begin(), vec.end());                        \
+            state.PauseTiming();                                                                   \
+            Destroy();                                                                             \
+            state.ResumeTiming();                                                                  \
+        }                                                                                          \
+    }                                                                                              \
+    BENCHMARK_REGISTER_F(dataType##VectorFixture,                                                  \
+                         BM_mpqsort_par_sort_parameters_tuning_##dataType##_##type##_##bench)      \
+        ->MeasureProcessCPUTime()                                                                  \
+        ->UseRealTime()                                                                            \
+        ->Name(str(BM_mpqsort_par_sort_parameters_tuning_##dataType##_##type##_##bench))           \
+        ->ArgsProduct({benchmark::CreateRange(64, 8192, 2),                                        \
+                       benchmark::CreateRange(1 << 14, 1 << 18, 2),                                \
+                       benchmark::CreateRange(32, 512, 2),                                         \
+                       benchmark::CreateRange(32, 512, 2),                                         \
+                       {3, 5, 8, 12, 15, 20, 25, 30}});
+
+register_bench_mpqsort_parameters_tuning(mpqsort_par_sort_parameters_tuning);
 
 // Run mpqsort sequential three way benchmarks
 #define mpqsort_seq_three_way_sort(dataType, bench, type, size, from, to)                          \

@@ -143,8 +143,19 @@ namespace mpqsort::parameters {
      * atomic/critical sections.
      */
     static long BLOCK_SIZE = 1 << 9;
+
+    /**
+     * @brief When to switch to sequential algorithm from parallel
+     * Threshold for switching from parallel version to sequential algorithm.
+     */
     static long SEQ_THRESHOLD = 1 << 17;
-    static long NO_RECURSION_THRESHOLD = 128;  // based on benchmarks
+
+    /**
+     * @brief Switch to non-recursive algorithm
+     * Threshold for switching to non-recursive algorithm (heapsort + insertion sort).
+     */
+
+    static long NO_RECURSION_THRESHOLD = 128;
     /**
      * @brief Maximum supported number of pivots by MPQsort
      * This is the max number of pivots that can MPQsort use during computation. This can't be
@@ -157,13 +168,13 @@ namespace mpqsort::parameters {
      * Number for pivots used to divide array in PAR_PARTITION_NUM_PIVOTS + 1 segments. This is done
      * only once and parallel multiway qsort is called afterwards on each such segment.
      */
-    const static long PAR_PARTITION_NUM_PIVOTS = (1 << 7) - 1;
+    static long PAR_PARTITION_NUM_PIVOTS = (1 << 7) - 1;
 
     /**
      * @brief Number of elements to chose a pivot from
      * Determined hos many elements from an input array we want to consider to chose one pivot
      */
-    const static long ONE_PIVOT_SAMPLE_SIZE = 20;
+    static long ONE_PIVOT_SAMPLE_SIZE = 20;
 }  // namespace mpqsort::parameters
 
 namespace mpqsort::helpers {
