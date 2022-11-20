@@ -472,13 +472,13 @@ namespace mpqsort::impl {
         return std::tuple{k2 - 1, g + 1};
     }
 
-    template <typename NumPivot, typename RandomBaseIt, typename Compare>
-    void _seq_multiway_qsort_inner_ybb(NumPivot pivot_num, RandomBaseIt base, long lp, long rp,
+    template <typename RandomBaseIt, typename Compare>
+    void _seq_multiway_qsort_inner_ybb(RandomBaseIt base, long lp, long rp,
                                        Compare& comp, long depth) {
         while (rp - lp > parameters::NO_RECURSION_THRESHOLD && depth > 0) {
             auto [index_p1, index_p2] = _seq_multiway_partition_two_pivots(base, lp, rp, comp);
-            _seq_multiway_qsort_inner_ybb(pivot_num, base, lp, index_p1 - 1, comp, depth - 1);
-            _seq_multiway_qsort_inner_ybb(pivot_num, base, index_p1 + 1, index_p2 - 1, comp,
+            _seq_multiway_qsort_inner_ybb(base, lp, index_p1 - 1, comp, depth - 1);
+            _seq_multiway_qsort_inner_ybb(base, index_p1 + 1, index_p2 - 1, comp,
                                           depth - 1);
             lp = index_p2 + 1;
         }
@@ -565,21 +565,22 @@ namespace mpqsort::impl {
         return std::tuple{k2, k, g2};
     }
 
-    template <typename NumPivot, typename RandomBaseIt, typename Compare>
-    void _seq_multiway_qsort_inner_waterloo(NumPivot pivot_num, RandomBaseIt base, long lp, long rp,
+    template <typename RandomBaseIt, typename Compare>
+    void _seq_multiway_qsort_inner_waterloo(RandomBaseIt base, long lp, long rp,
                                             Compare& comp, long depth) {
         while (rp - lp > parameters::NO_RECURSION_THRESHOLD && depth > 0) {
-            auto [index_p1, index_p2, index_p3]
+            // Structured binding not supported by some compilers when pragma used
+            auto indexes
                 = _seq_multiway_partition_three_pivots(base, lp, rp, comp);
-#pragma omp task if (index_p1 - lp > parameters::SEQ_THRESHOLD)
-            _seq_multiway_qsort_inner_waterloo(pivot_num, base, lp, index_p1 - 1, comp, depth - 1);
-#pragma omp task if (index_p2 - index_p1 > parameters::SEQ_THRESHOLD)
-            _seq_multiway_qsort_inner_waterloo(pivot_num, base, index_p1 + 1, index_p2 - 1, comp,
+#pragma omp task if (std::get<0>(indexes) - lp > parameters::SEQ_THRESHOLD)
+            _seq_multiway_qsort_inner_waterloo(base, lp, std::get<0>(indexes) - 1, comp, depth - 1);
+#pragma omp task if (std::get<1>(indexes) - std::get<0>(indexes) > parameters::SEQ_THRESHOLD)
+            _seq_multiway_qsort_inner_waterloo(base, std::get<0>(indexes) + 1, std::get<1>(indexes) - 1, comp,
                                                depth - 1);
-#pragma omp task if (index_p3 - index_p2 > parameters::SEQ_THRESHOLD)
-            _seq_multiway_qsort_inner_waterloo(pivot_num, base, index_p2 + 1, index_p3 - 1, comp,
+#pragma omp task if (std::get<2>(indexes) - std::get<1>(indexes) > parameters::SEQ_THRESHOLD)
+            _seq_multiway_qsort_inner_waterloo(base, std::get<1>(indexes) + 1, std::get<2>(indexes) - 1, comp,
                                                depth - 1);
-            lp = index_p3 + 1;
+            lp = std::get<2>(indexes) + 1;
         }
 
         helpers::_heap_insertion_sort(base, lp, rp, comp);
@@ -593,10 +594,10 @@ namespace mpqsort::impl {
 
         // TODO: Remove one pivot algorithm
         if (pivot_num == 2 || pivot_num == 1) {
-            _seq_multiway_qsort_inner_ybb(pivot_num, first, 0, last - first - 1, comp,
+            _seq_multiway_qsort_inner_ybb(first, 0, last - first - 1, comp,
                                           1.5 * std::log(last - first) / std::log(3));
         } else if (pivot_num == 3) {
-            _seq_multiway_qsort_inner_waterloo(pivot_num, first, 0, last - first - 1, comp,
+            _seq_multiway_qsort_inner_waterloo(first, 0, last - first - 1, comp,
                                                1.5 * std::log(last - first) / std::log(4));
         } else {
             throw std::invalid_argument("Unknown number of pivots, this should never happen");
@@ -843,7 +844,7 @@ namespace mpqsort::impl {
 // TODO: Decide if use 2 or 3 pivots sort
 #pragma omp parallel for schedule(dynamic)
         for (size_t i = 0; i < segment_ranges.size(); i++) {
-            _seq_multiway_qsort_inner_waterloo(3, base, segment_ranges[i].first,
+            _seq_multiway_qsort_inner_waterloo(base, segment_ranges[i].first,
                                                segment_ranges[i].second - 1, comp,
                                                1.5 * std::log(rp - lp) / std::log(4));
         }
