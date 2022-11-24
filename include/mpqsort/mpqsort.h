@@ -308,6 +308,32 @@ namespace mpqsort::helpers {
     }
 
     template <typename RandomBaseIt, typename Comparator>
+    inline auto _get_pivot_index(RandomBaseIt base, long lp, long rp, Comparator& comp) {
+        auto size = rp - lp + 1;
+        const auto sample_size = parameters::ONE_PIVOT_SAMPLE_SIZE;
+        std::vector<std::pair<typename std::iterator_traits<RandomBaseIt>::value_type, long>>
+            samples;
+        samples.reserve(sample_size);
+
+        // If not enough elements for sampling
+        if (size < sample_size) {
+            return size * 1 / 2 + lp;
+        } else {
+            // Get sample elements
+            for (long i = 0; i < sample_size; ++i) {
+                auto index = size * i / sample_size + lp;
+                samples[i] = std::make_pair(base[index], index);
+            }
+
+            // Sort samples based on provided comp
+            std::sort(samples.begin(), samples.end(),
+                      [&](auto& a, auto& b) { return comp(a.first, b.first); });
+
+            return samples[sample_size * 1 / 2].second;
+        }
+    }
+
+    template <typename RandomBaseIt, typename Comparator>
     inline auto _get_pivots_indexes_two(RandomBaseIt base, long lp, long rp, Comparator& comp) {
         auto size = rp - lp + 1;
         const auto sample_size = parameters::ONE_PIVOT_SAMPLE_SIZE * 2;
@@ -433,6 +459,51 @@ namespace mpqsort::impl {
     // ----- Main implementation START -----
     // OpenMP mergeable possible if shared variables (code gets executed as separate task or not)
     // SEQ
+
+    template <typename RandomBaseIt, typename Compare>
+    inline auto _seq_partition_one_pivot(RandomBaseIt base, long lp, long rp,
+                                                   Compare& comp) {
+        // Use optimal swap method
+        using std::swap;
+
+        auto idx = helpers::_get_pivot_index(base, lp, rp - 1, comp);
+
+        swap(base[rp], base[idx]);
+
+        auto p = base[rp];
+
+        // Indexes
+        auto i = lp;
+        auto j = rp - 1;
+
+        while (i < j) {
+            if (!comp(base[i], p) && comp(base[j], p)) {
+                std::swap(base[i], base[j]);
+                ++i;
+                --j;
+            } else {
+                if (comp(base[i], p)) i++;
+                if (!comp(base[j], p)) j--;
+            }
+        }
+
+        if (comp(base[j], p)) ++j;
+        std::swap(base[j], base[rp]);
+
+        return j;
+    }
+
+    template <typename RandomBaseIt, typename Compare>
+    void _seq_qsort_inner_hoare(RandomBaseIt base, long lp, long rp, Compare& comp,
+                                       long depth) {
+        while (rp - lp > parameters::NO_RECURSION_THRESHOLD && depth > 0) {
+            auto index_p = _seq_partition_one_pivot(base, lp, rp, comp);
+            _seq_qsort_inner_hoare(base, lp, index_p - 1, comp, depth - 1);
+            lp = index_p + 1;
+        }
+
+        helpers::_heap_insertion_sort(base, lp, rp, comp);
+    }
 
     template <typename RandomBaseIt, typename Compare>
     inline auto _seq_multiway_partition_two_pivots(RandomBaseIt base, long lp, long rp,
@@ -597,8 +668,11 @@ namespace mpqsort::impl {
                              Compare comp = Compare()) {
         if (last - first <= 1) return;
 
-        // TODO: Remove one pivot algorithm
-        if (pivot_num == 2 || pivot_num == 1) {
+        if (pivot_num == 1){
+            _seq_qsort_inner_hoare(first, 0, last - first - 1, comp,
+                                   1.5 * std::log(last - first) / std::log(2));
+        }
+        else if (pivot_num == 2) {
             _seq_multiway_qsort_inner_ybb(first, 0, last - first - 1, comp,
                                           1.5 * std::log(last - first) / std::log(3));
         } else if (pivot_num == 3) {
