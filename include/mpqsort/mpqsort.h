@@ -15,8 +15,8 @@
 // TODO: remove after all methods implemented
 #define UNUSED(x) (void)(x)
 // TODO: Remove when done
-#define DEBUG
-#define MEASURE
+//#define DEBUG
+//#define MEASURE
 
 #ifdef DEBUG
 #    define PRINT_ITERS(base, lp, rp, msg) mpqsort::helpers::print(base, lp, rp, msg)
@@ -1004,9 +1004,15 @@ namespace mpqsort::impl {
         auto boundaries = _par_multiway_partition(pivot_num, cores, base, lp, rp, comp);
 
         // Create ranges {start, end} for segments
-        std::vector<std::pair<long, long>> segment_ranges(boundaries.size());
-        for (size_t i = 1; i < boundaries.size(); ++i)
-            segment_ranges.emplace_back(std::make_pair(boundaries[i - 1], boundaries[i]));
+        std::vector<std::pair<long, long>> segment_ranges;
+        segment_ranges.reserve(boundaries.size());
+
+        long start = 0;
+        for (auto b : boundaries) {
+            if (start == boundaries.back()) break;
+            segment_ranges.emplace_back(std::make_pair(start, b - 1));
+            start = b;
+        }
 
         // Sort segments based on their length from the longest to shortest
         std::sort(segment_ranges.begin(), segment_ranges.end(), [](const auto& p1, const auto& p2) {
@@ -1018,7 +1024,7 @@ namespace mpqsort::impl {
 #pragma omp parallel for schedule(dynamic)
         for (size_t i = 0; i < segment_ranges.size(); i++) {
             _seq_multiway_qsort_inner_waterloo(base, segment_ranges[i].first,
-                                               segment_ranges[i].second - 1, comp,
+                                               segment_ranges[i].second, comp,
                                                1.5 * std::log(rp - lp) / std::log(4));
         }
     }
