@@ -16,6 +16,7 @@
 #define UNUSED(x) (void)(x)
 // TODO: Remove when done
 #define DEBUG
+#define MEASURE
 
 #ifdef DEBUG
 #    define PRINT_ITERS(base, lp, rp, msg) mpqsort::helpers::print(base, lp, rp, msg)
@@ -33,6 +34,28 @@
 #    define PRINT_ITERS(base, lp, rp, msg)
 #    define PRINT_VECTOR(vec, msg)
 #    define PRINT_TABLE(vec, msg)
+#endif
+
+#ifdef MEASURE
+size_t NUM_SWAP = 0;
+size_t NUM_COMP = 0;
+#    define MEASURE_INIT() \
+        NUM_SWAP = 0;      \
+        NUM_COMP = 0;
+#    define MEASURE_SWAP() ++NUM_SWAP
+#    define MEASURE_SWAP_N(n) NUM_SWAP += n
+#    define MEASURE_COMP() ++NUM_COMP
+#    define MEASURE_COMP_N(n) NUM_COMP += n
+#    define MEASURE_RESULTS(msg)   \
+        std::cout << msg << ": "; \
+        std::cout << "SWAP: " << NUM_SWAP << " COMP: " << NUM_COMP << "\n"
+#else
+#    define MEASURE_INIT()
+#    define MEASURE_SWAP()
+#    define MEASURE_SWAP_N(n)
+#    define MEASURE_COMP()
+#    define MEASURE_COMP_N(n)
+#    define MEASURE_RESULTS(msg)
 #endif
 
 #define INDEX(a, b, size) (a) * (size) + (b)
@@ -461,14 +484,13 @@ namespace mpqsort::impl {
     // SEQ
 
     template <typename RandomBaseIt, typename Compare>
-    inline auto _seq_partition_one_pivot(RandomBaseIt base, long lp, long rp,
-                                                   Compare& comp) {
+    inline auto _seq_partition_one_pivot(RandomBaseIt base, long lp, long rp, Compare& comp) {
         // Use optimal swap method
         using std::swap;
 
         auto idx = helpers::_get_pivot_index(base, lp, rp - 1, comp);
 
-        swap(base[rp], base[idx]);
+        swap(base[rp], base[idx]); MEASURE_SWAP();
 
         auto p = base[rp];
 
@@ -477,25 +499,31 @@ namespace mpqsort::impl {
         auto j = rp - 1;
 
         while (i < j) {
-            if (!comp(base[i], p) && comp(base[j], p)) {
-                std::swap(base[i], base[j]);
+            if (!comp(base[i], p) && comp(base[j], p)) { MEASURE_COMP_N(2);
+                std::swap(base[i], base[j]); MEASURE_SWAP();
                 ++i;
                 --j;
             } else {
-                if (comp(base[i], p)) i++;
-                if (!comp(base[j], p)) j--;
+                if (comp(base[i], p)) {
+                    MEASURE_COMP();
+                    i++;
+                }
+                if (!comp(base[j], p)) {
+                    MEASURE_COMP();
+                    j--;
+                }
             }
         }
 
         if (comp(base[j], p)) ++j;
         std::swap(base[j], base[rp]);
+        MEASURE_SWAP();
 
         return j;
     }
 
     template <typename RandomBaseIt, typename Compare>
-    void _seq_qsort_inner_hoare(RandomBaseIt base, long lp, long rp, Compare& comp,
-                                       long depth) {
+    void _seq_qsort_inner_hoare(RandomBaseIt base, long lp, long rp, Compare& comp, long depth) {
         while (rp - lp > parameters::NO_RECURSION_THRESHOLD && depth > 0) {
             auto index_p = _seq_partition_one_pivot(base, lp, rp, comp);
             _seq_qsort_inner_hoare(base, lp, index_p - 1, comp, depth - 1);
@@ -522,23 +550,28 @@ namespace mpqsort::impl {
             swap(base[rp], base[idx1]);
         }
 
+        MEASURE_COMP();
+        MEASURE_SWAP_N(2);
+
         const auto p1 = base[lp], p2 = base[rp];
 
         // Set boundaries
         auto k2 = lp + 1, k = k2, g = rp - 1;
 
         while (k <= g) {
-            if (comp(base[k], p1)) {
-                swap(base[k2], base[k]);
+            if (comp(base[k], p1)) { MEASURE_COMP();
+                swap(base[k2], base[k]); MEASURE_SWAP();
                 ++k2;
             } else {
-                if (!comp(base[k], p2)) {
-                    while (k < g && comp(p2, base[g])) --g;
+                if (!comp(base[k], p2)) { MEASURE_COMP();
+                    while (k < g && comp(p2, base[g])){ MEASURE_COMP();
+                        --g;
+                    }
 
-                    if (!comp(base[g], p1)) {
-                        swap(base[k], base[g]);
+                    if (!comp(base[g], p1)) { MEASURE_COMP();
+                        swap(base[k], base[g]); MEASURE_SWAP();
                     } else {
-                        helpers::_cyclic_shift_left(base, k, k2, g);
+                        helpers::_cyclic_shift_left(base, k, k2, g); MEASURE_SWAP_N(2);
                         ++k2;
                     }
                     --g;
@@ -550,6 +583,7 @@ namespace mpqsort::impl {
         // Move pivots at right place
         swap(base[rp], base[g + 1]);
         swap(base[lp], base[k2 - 1]);
+        MEASURE_SWAP_N(2);
 
         return std::tuple{k2 - 1, g + 1};
     }
@@ -581,10 +615,15 @@ namespace mpqsort::impl {
         if (comp(base[idx3], base[idx1])) swap(base[idx1], base[idx3]);
         if (comp(base[idx3], base[idx2])) swap(base[idx2], base[idx3]);
 
+        MEASURE_SWAP_N(3);
+        MEASURE_COMP_N(3);
+
         // Move pivots to array edges
         swap(base[idx1], base[lp]);
         swap(base[idx2], base[lp + 1]);
         swap(base[idx3], base[rp]);
+
+        MEASURE_SWAP_N(3);
 
         // Indexes
         long k2, k, g, g2;
@@ -595,25 +634,30 @@ namespace mpqsort::impl {
 
         while (k <= g) {
             while (k <= g && comp(base[k], p2)) {
-                if (comp(base[k], p1)) {
-                    swap(base[k2], base[k]);
+                MEASURE_COMP();
+                if (comp(base[k], p1)) { MEASURE_COMP();
+                    swap(base[k2], base[k]); MEASURE_SWAP();
                     ++k2;
                 }
                 ++k;
             }
             while (k <= g && comp(p2, base[g])) {
-                if (comp(p3, base[g])) {
-                    swap(base[g], base[g2]);
+                MEASURE_COMP();
+                if (comp(p3, base[g])) { MEASURE_COMP();
+                    swap(base[g], base[g2]); MEASURE_SWAP();
                     --g2;
                 }
                 --g;
             }
             if (k <= g) {
                 if (comp(p3, base[k])) {
-                    if (comp(base[g], p1)) {
+                    MEASURE_COMP();
+                    if (comp(base[g], p1)) { MEASURE_COMP();
+                        MEASURE_SWAP_N(3);
                         helpers::_cyclic_shift_right(base, k2, k, g2, g);
                         ++k2;
                     } else {
+                        MEASURE_SWAP_N(2);
                         helpers::_cyclic_shift_left(base, k, g, g2);
                     }
                     ++k;
@@ -621,9 +665,12 @@ namespace mpqsort::impl {
                     --g2;
                 } else {
                     if (comp(base[g], p1)) {
+                        MEASURE_COMP();
+                        MEASURE_SWAP_N(2);
                         helpers::_cyclic_shift_right(base, k2, k, g);
                         ++k2;
                     } else {
+                        MEASURE_SWAP();
                         swap(base[k], base[g]);
                     }
                     ++k;
@@ -642,6 +689,8 @@ namespace mpqsort::impl {
         --k2;
         swap(base[lp], base[k2]);
         swap(base[rp], base[g2]);
+
+        MEASURE_SWAP_N(4);
 
         return std::tuple{k2, k, g2};
     }
@@ -668,16 +717,20 @@ namespace mpqsort::impl {
                              Compare comp = Compare()) {
         if (last - first <= 1) return;
 
-        if (pivot_num == 1){
+        // Init measures of swaps and compares
+        MEASURE_INIT();
+        if (pivot_num == 1) {
             _seq_qsort_inner_hoare(first, 0, last - first - 1, comp,
                                    1.5 * std::log(last - first) / std::log(2));
-        }
-        else if (pivot_num == 2) {
+            MEASURE_RESULTS("Num pivots: 1");
+        } else if (pivot_num == 2) {
             _seq_multiway_qsort_inner_ybb(first, 0, last - first - 1, comp,
                                           1.5 * std::log(last - first) / std::log(3));
+            MEASURE_RESULTS("Num pivots: 2");
         } else if (pivot_num == 3) {
             _seq_multiway_qsort_inner_waterloo(first, 0, last - first - 1, comp,
                                                1.5 * std::log(last - first) / std::log(4));
+            MEASURE_RESULTS("Num pivots: 3");
         } else {
             throw std::invalid_argument("Unknown number of pivots, this should never happen");
         }

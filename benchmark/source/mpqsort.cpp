@@ -346,6 +346,28 @@ register_bench_small_values_range(mpqsort_par_sort);
 
 register_bench_mpqsort_parameters_tuning(mpqsort_par_sort_parameters_tuning);
 
+// Run mpqsort sequential two way benchmarks
+#define mpqsort_seq_two_way_sort(dataType, bench, type, size, from, to)                          \
+    BENCHMARK_TEMPLATE_DEFINE_F(dataType##VectorFixture,                                           \
+                                BM_mpqsort_seq_two_way_sort_##dataType##_##type##_##bench, type, \
+                                size, from, to)                                                    \
+    (benchmark::State & state) {                                                                   \
+        for (auto _ : state) {                                                                     \
+            state.PauseTiming();                                                                   \
+            Prepare();                                                                             \
+            state.ResumeTiming();                                                                  \
+            mpqsort::sort(mpqsort::execution::seq, vec.begin(), vec.end());              \
+            state.PauseTiming();                                                                   \
+            Destroy();                                                                             \
+            state.ResumeTiming();                                                                  \
+        }                                                                                          \
+    }                                                                                              \
+    BENCHMARK_REGISTER_F(dataType##VectorFixture,                                                  \
+                         BM_mpqsort_seq_two_way_sort_##dataType##_##type##_##bench)              \
+        ->MeasureProcessCPUTime()                                                                  \
+        ->UseRealTime()                                                                            \
+        ->Name(str(BM_mpqsort_seq_two_way_sort_##dataType##_##type##_##bench));
+
 // Run mpqsort sequential three way benchmarks
 #define mpqsort_seq_three_way_sort(dataType, bench, type, size, from, to)                          \
     BENCHMARK_TEMPLATE_DEFINE_F(dataType##VectorFixture,                                           \
@@ -524,6 +546,7 @@ register_bench_default(nvidia_thrust_sort);
 register_bench_small_sizes(nvidia_thrust_sort);
 
 register_bench_small_size_threshold(std_sort);
+register_bench_small_size_threshold(mpqsort_seq_two_way_sort)
 register_bench_small_size_threshold(mpqsort_seq_three_way_sort)
     register_bench_small_size_threshold(mpqsort_seq_four_way_sort)
         register_bench_small_size_threshold(mpqsort_par_sort)
