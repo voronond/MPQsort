@@ -14,7 +14,7 @@
 
 // TODO: Remove when done
 //#define DEBUG
-#define MEASURE
+//#define MEASURE
 
 #ifdef DEBUG
 #    define PRINT_ITERS(base, lp, rp, msg) mpqsort::helpers::print(base, lp, rp, msg)
@@ -330,6 +330,45 @@ namespace mpqsort::helpers {
         _unguarded_insertion_sort(base, lp + 1, rp, comp);
     }
 
+    template <typename Pair, typename Comparator>
+    inline auto _get_median_from_three(Pair&& el1, Pair&& el2, Pair&& el3, Comparator& comp) {
+        using std::swap;
+
+        MEASURE_COMP_N(3);
+        if (comp(el2.first, el1.first)) {
+            MEASURE_SWAP();
+            swap(el1, el2);
+        }
+        if (comp(el3.first, el2.first)) {
+            MEASURE_SWAP();
+            swap(el2, el3);
+        }
+        if (comp(el3.first, el1.first)) {
+            MEASURE_SWAP();
+            swap(el1, el3);
+        }
+
+        return el2.second;
+    }
+
+    template <typename RandomBaseIt, typename Comparator>
+    inline auto _get_pivot_index_median(RandomBaseIt base, long lp, long rp, Comparator& comp) {
+        using ValueType = typename std::iterator_traits<RandomBaseIt>::value_type;
+        long sample_size = 3;
+
+        auto size = rp - lp + 1;
+
+        if (size < sample_size)
+            return size / 2 + lp;
+
+        std::pair<ValueType, long> el1, el2, el3;
+        el1 = std::make_pair(base[lp], lp);
+        el2 = std::make_pair(base[size/2], size/2);
+        el3 = std::make_pair(base[rp], rp);
+
+        return _get_median_from_three(el1, el2, el3, comp);
+    }
+
     template <typename RandomBaseIt, typename Comparator>
     inline auto _get_pivot_index(RandomBaseIt base, long lp, long rp, Comparator& comp) {
         auto size = rp - lp + 1;
@@ -360,6 +399,61 @@ namespace mpqsort::helpers {
     }
 
     template <typename RandomBaseIt, typename Comparator>
+    inline auto _get_pivots_indexes_two_medians(RandomBaseIt base, long lp, long rp, Comparator& comp) {
+        using std::swap;
+        //using ValueType = typename std::iterator_traits<RandomBaseIt>::value_type;
+        long sample_size = 3;
+
+        auto size = rp - lp + 1;
+
+        if (size < sample_size)
+            return std::tuple{size * 1 / 3 + lp, size * 2 / 3 + lp};
+
+        long i1, i2, i3;
+
+        i1 = size / 4 + lp;
+        i2 = size / 4 * 2 + lp;
+        i3 = size / 4 * 3 + lp;
+
+        MEASURE_COMP_N(3);
+        if (comp(base[i2], base[i1])) {
+            MEASURE_SWAP();
+            swap(i1, i2);
+        }
+        if (comp(base[i3], base[i2])) {
+            MEASURE_SWAP();
+            swap(i2, i3);
+        }
+        if (comp(base[i3], base[i1])) {
+            MEASURE_SWAP();
+            swap(i1, i3);
+        }
+
+        return std::tuple{i1, i3};
+/*
+
+        std::pair<ValueType, long> el1, el2, el3, el4, el5, el6;
+        el1 = std::make_pair(base[lp], lp);
+        el2 = std::make_pair(base[size / 6 + lp], size/6 + lp);
+        el3 = std::make_pair(base[size / 6 * 2+ lp], size / 6 * 2 + lp);
+        el4 = std::make_pair(base[size / 6 * 3+ lp], size / 6 * 3 + lp);
+        el5 = std::make_pair(base[size / 6 * 4+ lp], size / 6 * 4 + lp);
+        el6 = std::make_pair(base[rp], rp);
+
+        auto i1 = _get_median_from_three(el1, el2, el3, comp);
+        auto i2 = _get_median_from_three(el4, el5, el6, comp);
+
+        MEASURE_COMP();
+        if (comp(base[i2], base[i1])) {
+            MEASURE_SWAP();
+            swap(i2, i1);
+        }
+
+        return std::tuple{i1, i2};
+        */
+    }
+
+    template <typename RandomBaseIt, typename Comparator>
     inline auto _get_pivots_indexes_two(RandomBaseIt base, long lp, long rp, Comparator& comp) {
         auto size = rp - lp + 1;
         const auto sample_size = parameters::ONE_PIVOT_SAMPLE_SIZE * 2;
@@ -387,6 +481,72 @@ namespace mpqsort::helpers {
             return std::tuple{samples[sample_size * 1 / 3].second,
                               samples[sample_size * 2 / 3].second};
         }
+    }
+
+    template <typename RandomBaseIt, typename Comparator>
+    inline auto _get_pivot_indexes_three_medians(RandomBaseIt base, long lp, long rp, Comparator& comp) {
+        using std::swap;
+        //using ValueType = typename std::iterator_traits<RandomBaseIt>::value_type;
+        long sample_size = 3;
+
+        auto size = rp - lp + 1;
+
+        if (size < sample_size)
+            return std::tuple{size * 1 / 4 + lp, size * 2 / 4 + lp, size * 3 / 4 + lp};
+
+        long i1, i2, i3;
+
+        i1 = size / 4 + lp;
+        i2 = size / 4 * 2 + lp;
+        i3 = size / 4 * 3 + lp;
+
+        MEASURE_COMP_N(3);
+        if (comp(base[i2], base[i1])) {
+            MEASURE_SWAP();
+            swap(i1, i2);
+        }
+        if (comp(base[i3], base[i2])) {
+            MEASURE_SWAP();
+            swap(i2, i3);
+        }
+        if (comp(base[i3], base[i1])) {
+            MEASURE_SWAP();
+            swap(i1, i3);
+        }
+
+        return std::tuple{i1, i2, i3};
+        /*
+        std::pair<ValueType, long> el1, el2, el3, el4, el5, el6, el7, el8, el9;
+        el1 = std::make_pair(base[lp], lp);
+        el2 = std::make_pair(base[size / 9 + lp], size/9 + lp);
+        el3 = std::make_pair(base[size / 9 * 2+ lp], size / 9 * 2 + lp);
+        el4 = std::make_pair(base[size / 9 * 3+ lp], size / 9 * 3 + lp);
+        el5 = std::make_pair(base[size / 9 * 4+ lp], size / 9 * 4 + lp);
+        el6 = std::make_pair(base[size / 9 * 5+ lp], size / 9 * 5 + lp);
+        el7 = std::make_pair(base[size / 9 * 6+ lp], size / 9 * 6 + lp);
+        el8 = std::make_pair(base[size / 9 * 7+ lp], size / 9 * 7 + lp);
+        el9 = std::make_pair(base[rp], rp);
+
+        auto i1 = _get_median_from_three(el1, el2, el3, comp);
+        auto i2 = _get_median_from_three(el4, el5, el6, comp);
+        auto i3 = _get_median_from_three(el7, el8, el9, comp);
+
+        MEASURE_COMP_N(3);
+        if (comp(base[i2], base[i1])) {
+            MEASURE_SWAP();
+            swap(i1, i2);
+        }
+        if (comp(base[i3], base[i2])) {
+            MEASURE_SWAP();
+            swap(i2, i3);
+        }
+        if (comp(base[i3], base[i1])) {
+            MEASURE_SWAP();
+            swap(i1, i3);
+        }
+
+        return std::tuple{i1, i2, i3};
+        */
     }
 
     template <typename RandomBaseIt, typename Comparator>
@@ -497,7 +657,11 @@ namespace mpqsort::impl {
         // Use optimal swap method
         using std::swap;
 
+        #ifdef MEASURE
+        auto idx = helpers::_get_pivot_index_median(base, lp, rp, comp);
+        #else
         auto idx = helpers::_get_pivot_index(base, lp, rp, comp);
+        #endif
 
         auto p = base[idx];
 
@@ -542,7 +706,11 @@ namespace mpqsort::impl {
         using std::swap;
 
         // Get pivots
+        #ifdef MEASURE
+        auto [idx1, idx2] = helpers::_get_pivots_indexes_two_medians(base, lp + 1, rp - 1, comp);
+        #else
         auto [idx1, idx2] = helpers::_get_pivots_indexes_two(base, lp + 1, rp - 1, comp);
+        #endif
 
         MEASURE_COMP();
         if (comp(base[idx1], base[idx2])) {
@@ -618,7 +786,11 @@ namespace mpqsort::impl {
         using std::swap;
 
         // Get pivots
+        #ifdef MEASURE
+        auto [idx1, idx2, idx3] = helpers::_get_pivot_indexes_three_medians(base, lp + 2, rp - 1, comp);
+        #else
         auto [idx1, idx2, idx3] = helpers::_get_pivot_indexes_three(base, lp + 2, rp - 1, comp);
+        #endif
 
         // Sort pivots
         MEASURE_COMP_N(3);

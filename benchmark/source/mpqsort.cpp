@@ -224,8 +224,8 @@ struct RotatedOrderVectorFixture : public RandomVectorFixture<T, Size, From, To>
     register_bench_int_random(name, small_size_threshold##_##500000, 500000, -1, -1);       \
     register_bench_int_random(name, small_size_threshold##_##1000000, 1000000, -1, -1);     \
     register_bench_int_random(name, small_size_threshold##_##10000000, 10000000, -1, -1);   \
-    register_bench_int_random(name, small_size_threshold##_##100000000, 100000000, -1, -1); \
-    register_bench_int_random(name, small_size_threshold##_##500000000, 500000000, -1, -1);
+    register_bench_int_random(name, small_size_threshold##_##100000000, 100000000, -1, -1);
+    //register_bench_int_random(name, small_size_threshold##_##500000000, 500000000, -1, -1);
 
 // Parameters tuning par mpqsort
 #define mpqsort_parameters_tuning mpqsort_parameters_tuning
