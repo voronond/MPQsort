@@ -497,47 +497,38 @@ namespace mpqsort::impl {
         // Use optimal swap method
         using std::swap;
 
-        auto idx = helpers::_get_pivot_index(base, lp, rp - 1, comp);
+        auto idx = helpers::_get_pivot_index(base, lp, rp, comp);
 
-        swap(base[rp], base[idx]); MEASURE_SWAP();
+        auto p = base[idx];
 
-        auto p = base[rp];
+        auto i = lp - 1, j = rp + 1;
 
-        // Indexes
-        auto i = lp;
-        auto j = rp - 1;
-
-        while (i < j) {
-            MEASURE_COMP_N(2);
-            if (!comp(base[i], p) && comp(base[j], p)) {
-                MEASURE_SWAP();
-                std::swap(base[i], base[j]);
+        while (true) {
+            do {
+                MEASURE_COMP();
                 ++i;
+            } while (comp(base[i], p));
+
+            do {
+                MEASURE_COMP();
                 --j;
-            } else {
-                MEASURE_COMP_N(2);
-                if (comp(base[i], p)) {
-                    i++;
-                }
-                if (!comp(base[j], p)) {
-                    j--;
-                }
+            } while (comp(p, base[j]));
+
+            if (i >= j)
+            {
+                return j;
             }
+
+            MEASURE_SWAP();
+            swap(base[i], base[j]);
         }
-
-        if (comp(base[j], p)) ++j;
-        MEASURE_COMP();
-        std::swap(base[j], base[rp]);
-        MEASURE_SWAP();
-
-        return j;
     }
 
     template <typename RandomBaseIt, typename Compare>
     void _seq_qsort_inner_hoare(RandomBaseIt base, long lp, long rp, Compare& comp, long depth) {
         while (rp - lp > parameters::NO_RECURSION_THRESHOLD && depth > 0) {
             auto index_p = _seq_partition_one_pivot(base, lp, rp, comp);
-            _seq_qsort_inner_hoare(base, lp, index_p - 1, comp, depth - 1);
+            _seq_qsort_inner_hoare(base, lp, index_p, comp, depth - 1);
             lp = index_p + 1;
         }
 
