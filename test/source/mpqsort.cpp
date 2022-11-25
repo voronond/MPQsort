@@ -489,6 +489,7 @@ TEMPLATE_LIST_TEST_CASE("Sort custom type with defined comparator", TAG.SORT_ALL
                         ALLOWED_EXECUTION_POLICIES) {
     // Declare custom type and comparators
     struct _test_struct {
+        _test_struct() {}
         _test_struct(std::string&& _str, int _num) : str(_str), num(_num) {}
         std::string str;
         int num;

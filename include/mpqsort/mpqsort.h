@@ -41,7 +41,7 @@ size_t NUM_SWAP = 0;
 size_t NUM_COMP = 0;
 #    define MEASURE_INIT() \
         NUM_SWAP = 0;      \
-        NUM_COMP = 0;
+        NUM_COMP = 0
 #    define MEASURE_SWAP() ++NUM_SWAP
 #    define MEASURE_SWAP_N(n) NUM_SWAP += n
 #    define MEASURE_COMP() ++NUM_COMP
@@ -318,6 +318,8 @@ namespace mpqsort::helpers {
     template <typename RandomBaseIt, typename Compare>
     inline void _heap_insertion_sort(RandomBaseIt base, long lp, long rp, Compare& comp) {
         using std::swap;
+
+        if (lp >= rp) return;
 
         long size = rp - lp;
         // size == 1 if sort 2 elements, otherwise swap element with itself
@@ -1019,11 +1021,12 @@ namespace mpqsort::impl {
             return (p1.second - p1.first) > (p2.second - p2.first);
         });
 
+
         // Parallel multiway sort of each segment
 // TODO: Decide if use 2 or 3 pivots sort
 #pragma omp parallel for schedule(dynamic)
         for (size_t i = 0; i < segment_ranges.size(); i++) {
-            _seq_multiway_qsort_inner_waterloo(base, segment_ranges[i].first,
+            _par_multiway_qsort_inner_waterloo(base, segment_ranges[i].first,
                                                segment_ranges[i].second, comp,
                                                1.5 * std::log(rp - lp) / std::log(4));
         }
