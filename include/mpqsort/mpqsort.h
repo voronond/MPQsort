@@ -12,11 +12,9 @@
 #include <random>
 #include <type_traits>
 
-// TODO: remove after all methods implemented
-#define UNUSED(x) (void)(x)
 // TODO: Remove when done
 //#define DEBUG
-//#define MEASURE
+#define MEASURE
 
 #ifdef DEBUG
 #    define PRINT_ITERS(base, lp, rp, msg) mpqsort::helpers::print(base, lp, rp, msg)
@@ -354,6 +352,9 @@ namespace mpqsort::helpers {
             std::sort(samples.begin(), samples.end(),
                       [&](auto& a, auto& b) { return comp(a.first, b.first); });
 
+            MEASURE_COMP_N(sample_size * std::log(sample_size));
+            MEASURE_SWAP_N(sample_size * std::log(sample_size));
+
             return samples[sample_size * 1 / 2].second;
         }
     }
@@ -379,6 +380,9 @@ namespace mpqsort::helpers {
             // Sort samples based on provided comp
             std::sort(samples.begin(), samples.end(),
                       [&](auto& a, auto& b) { return comp(a.first, b.first); });
+
+            MEASURE_COMP_N(sample_size * std::log(sample_size));
+            MEASURE_SWAP_N(sample_size * std::log(sample_size));
 
             return std::tuple{samples[sample_size * 1 / 3].second,
                               samples[sample_size * 2 / 3].second};
@@ -406,6 +410,9 @@ namespace mpqsort::helpers {
             // Sort samples based on provided comp
             std::sort(samples.begin(), samples.end(),
                       [&](auto& a, auto& b) { return comp(a.first, b.first); });
+
+            MEASURE_COMP_N(sample_size * std::log(sample_size));
+            MEASURE_SWAP_N(sample_size * std::log(sample_size));
 
             return std::tuple{samples[sample_size * 1 / 4].second,
                               samples[sample_size * 2 / 4].second,
@@ -501,23 +508,25 @@ namespace mpqsort::impl {
         auto j = rp - 1;
 
         while (i < j) {
-            if (!comp(base[i], p) && comp(base[j], p)) { MEASURE_COMP_N(2);
-                std::swap(base[i], base[j]); MEASURE_SWAP();
+            MEASURE_COMP_N(2);
+            if (!comp(base[i], p) && comp(base[j], p)) {
+                MEASURE_SWAP();
+                std::swap(base[i], base[j]);
                 ++i;
                 --j;
             } else {
+                MEASURE_COMP_N(2);
                 if (comp(base[i], p)) {
-                    MEASURE_COMP();
                     i++;
                 }
                 if (!comp(base[j], p)) {
-                    MEASURE_COMP();
                     j--;
                 }
             }
         }
 
         if (comp(base[j], p)) ++j;
+        MEASURE_COMP();
         std::swap(base[j], base[rp]);
         MEASURE_SWAP();
 
@@ -544,6 +553,7 @@ namespace mpqsort::impl {
         // Get pivots
         auto [idx1, idx2] = helpers::_get_pivots_indexes_two(base, lp + 1, rp - 1, comp);
 
+        MEASURE_COMP();
         if (comp(base[idx1], base[idx2])) {
             swap(base[lp], base[idx1]);
             swap(base[rp], base[idx2]);
@@ -552,7 +562,6 @@ namespace mpqsort::impl {
             swap(base[rp], base[idx1]);
         }
 
-        MEASURE_COMP();
         MEASURE_SWAP_N(2);
 
         const auto p1 = base[lp], p2 = base[rp];
@@ -561,19 +570,27 @@ namespace mpqsort::impl {
         auto k2 = lp + 1, k = k2, g = rp - 1;
 
         while (k <= g) {
-            if (comp(base[k], p1)) { MEASURE_COMP();
-                swap(base[k2], base[k]); MEASURE_SWAP();
+            MEASURE_COMP();
+            if (comp(base[k], p1)) {
+                MEASURE_SWAP();
+                swap(base[k2], base[k]);
                 ++k2;
             } else {
-                if (!comp(base[k], p2)) { MEASURE_COMP();
-                    while (k < g && comp(p2, base[g])){ MEASURE_COMP();
+                MEASURE_COMP();
+                if (!comp(base[k], p2)) {
+                    MEASURE_COMP();
+                    while (k < g && comp(p2, base[g])){
+                        MEASURE_COMP();
                         --g;
                     }
 
-                    if (!comp(base[g], p1)) { MEASURE_COMP();
-                        swap(base[k], base[g]); MEASURE_SWAP();
+                    MEASURE_COMP();
+                    if (!comp(base[g], p1)) {
+                        MEASURE_SWAP();
+                        swap(base[k], base[g]);
                     } else {
-                        helpers::_cyclic_shift_left(base, k, k2, g); MEASURE_SWAP_N(2);
+                        MEASURE_SWAP_N(2);
+                        helpers::_cyclic_shift_left(base, k, k2, g);
                         ++k2;
                     }
                     --g;
@@ -613,19 +630,26 @@ namespace mpqsort::impl {
         auto [idx1, idx2, idx3] = helpers::_get_pivot_indexes_three(base, lp + 2, rp - 1, comp);
 
         // Sort pivots
-        if (comp(base[idx2], base[idx1])) swap(base[idx1], base[idx2]);
-        if (comp(base[idx3], base[idx1])) swap(base[idx1], base[idx3]);
-        if (comp(base[idx3], base[idx2])) swap(base[idx2], base[idx3]);
-
-        MEASURE_SWAP_N(3);
         MEASURE_COMP_N(3);
+        if (comp(base[idx2], base[idx1])) {
+            MEASURE_SWAP();
+            swap(base[idx1], base[idx2]);
+        }
+        if (comp(base[idx3], base[idx1])) {
+            MEASURE_SWAP();
+            swap(base[idx1], base[idx3]);
+        }
+        if (comp(base[idx3], base[idx2])) {
+            MEASURE_SWAP();
+            swap(base[idx2], base[idx3]);
+        }
 
         // Move pivots to array edges
+        MEASURE_SWAP_N(3);
         swap(base[idx1], base[lp]);
         swap(base[idx2], base[lp + 1]);
         swap(base[idx3], base[rp]);
 
-        MEASURE_SWAP_N(3);
 
         // Indexes
         long k2, k, g, g2;
@@ -635,26 +659,33 @@ namespace mpqsort::impl {
         const auto p1 = base[lp], p2 = base[lp + 1], p3 = base[rp];
 
         while (k <= g) {
+            MEASURE_COMP();
             while (k <= g && comp(base[k], p2)) {
                 MEASURE_COMP();
-                if (comp(base[k], p1)) { MEASURE_COMP();
-                    swap(base[k2], base[k]); MEASURE_SWAP();
+                MEASURE_COMP();
+                if (comp(base[k], p1)) {
+                    MEASURE_SWAP();
+                    swap(base[k2], base[k]);
                     ++k2;
                 }
                 ++k;
             }
+            MEASURE_COMP();
             while (k <= g && comp(p2, base[g])) {
                 MEASURE_COMP();
-                if (comp(p3, base[g])) { MEASURE_COMP();
-                    swap(base[g], base[g2]); MEASURE_SWAP();
+                MEASURE_COMP();
+                if (comp(p3, base[g])) {
+                    MEASURE_SWAP();
+                    swap(base[g], base[g2]);
                     --g2;
                 }
                 --g;
             }
             if (k <= g) {
+                MEASURE_COMP();
                 if (comp(p3, base[k])) {
                     MEASURE_COMP();
-                    if (comp(base[g], p1)) { MEASURE_COMP();
+                    if (comp(base[g], p1)) {
                         MEASURE_SWAP_N(3);
                         helpers::_cyclic_shift_right(base, k2, k, g2, g);
                         ++k2;
@@ -666,8 +697,8 @@ namespace mpqsort::impl {
                     --g;
                     --g2;
                 } else {
+                    MEASURE_COMP();
                     if (comp(base[g], p1)) {
-                        MEASURE_COMP();
                         MEASURE_SWAP_N(2);
                         helpers::_cyclic_shift_right(base, k2, k, g);
                         ++k2;
