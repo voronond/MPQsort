@@ -44,7 +44,7 @@ size_t NUM_COMP = 0;
 #    define MEASURE_SWAP_N(n) NUM_SWAP += n
 #    define MEASURE_COMP() ++NUM_COMP
 #    define MEASURE_COMP_N(n) NUM_COMP += n
-#    define MEASURE_RESULTS(msg)   \
+#    define MEASURE_RESULTS(msg)  \
         std::cout << msg << ": "; \
         std::cout << "SWAP: " << NUM_SWAP << " COMP: " << NUM_COMP << "\n"
 #else
@@ -358,12 +358,11 @@ namespace mpqsort::helpers {
 
         auto size = rp - lp + 1;
 
-        if (size < sample_size)
-            return size / 2 + lp;
+        if (size < sample_size) return size / 2 + lp;
 
         std::pair<ValueType, long> el1, el2, el3;
         el1 = std::make_pair(base[lp], lp);
-        el2 = std::make_pair(base[size/2], size/2);
+        el2 = std::make_pair(base[size / 2], size / 2);
         el3 = std::make_pair(base[rp], rp);
 
         return _get_median_from_three(el1, el2, el3, comp);
@@ -399,9 +398,10 @@ namespace mpqsort::helpers {
     }
 
     template <typename RandomBaseIt, typename Comparator>
-    inline auto _get_pivots_indexes_two_medians(RandomBaseIt base, long lp, long rp, Comparator& comp) {
+    inline auto _get_pivots_indexes_two_medians(RandomBaseIt base, long lp, long rp,
+                                                Comparator& comp) {
         using std::swap;
-        //using ValueType = typename std::iterator_traits<RandomBaseIt>::value_type;
+        // using ValueType = typename std::iterator_traits<RandomBaseIt>::value_type;
         long sample_size = 3;
 
         auto size = rp - lp + 1;
@@ -438,27 +438,27 @@ namespace mpqsort::helpers {
         }
 
         return std::tuple{i1, i3};
-/*
+        /*
 
-        std::pair<ValueType, long> el1, el2, el3, el4, el5, el6;
-        el1 = std::make_pair(base[lp], lp);
-        el2 = std::make_pair(base[size / 6 + lp], size/6 + lp);
-        el3 = std::make_pair(base[size / 6 * 2+ lp], size / 6 * 2 + lp);
-        el4 = std::make_pair(base[size / 6 * 3+ lp], size / 6 * 3 + lp);
-        el5 = std::make_pair(base[size / 6 * 4+ lp], size / 6 * 4 + lp);
-        el6 = std::make_pair(base[rp], rp);
+                std::pair<ValueType, long> el1, el2, el3, el4, el5, el6;
+                el1 = std::make_pair(base[lp], lp);
+                el2 = std::make_pair(base[size / 6 + lp], size/6 + lp);
+                el3 = std::make_pair(base[size / 6 * 2+ lp], size / 6 * 2 + lp);
+                el4 = std::make_pair(base[size / 6 * 3+ lp], size / 6 * 3 + lp);
+                el5 = std::make_pair(base[size / 6 * 4+ lp], size / 6 * 4 + lp);
+                el6 = std::make_pair(base[rp], rp);
 
-        auto i1 = _get_median_from_three(el1, el2, el3, comp);
-        auto i2 = _get_median_from_three(el4, el5, el6, comp);
+                auto i1 = _get_median_from_three(el1, el2, el3, comp);
+                auto i2 = _get_median_from_three(el4, el5, el6, comp);
 
-        MEASURE_COMP();
-        if (comp(base[i2], base[i1])) {
-            MEASURE_SWAP();
-            swap(i2, i1);
-        }
+                MEASURE_COMP();
+                if (comp(base[i2], base[i1])) {
+                    MEASURE_SWAP();
+                    swap(i2, i1);
+                }
 
-        return std::tuple{i1, i2};
-        */
+                return std::tuple{i1, i2};
+                */
     }
 
     template <typename RandomBaseIt, typename Comparator>
@@ -501,9 +501,10 @@ namespace mpqsort::helpers {
     }
 
     template <typename RandomBaseIt, typename Comparator>
-    inline auto _get_pivot_indexes_three_medians(RandomBaseIt base, long lp, long rp, Comparator& comp) {
+    inline auto _get_pivot_indexes_three_medians(RandomBaseIt base, long lp, long rp,
+                                                 Comparator& comp) {
         using std::swap;
-        //using ValueType = typename std::iterator_traits<RandomBaseIt>::value_type;
+        // using ValueType = typename std::iterator_traits<RandomBaseIt>::value_type;
         long sample_size = 3;
 
         auto size = rp - lp + 1;
@@ -705,11 +706,11 @@ namespace mpqsort::impl {
         // Use optimal swap method
         using std::swap;
 
-        #ifdef MEASURE
+#ifdef MEASURE
         auto idx = helpers::_get_pivot_index_median(base, lp, rp, comp);
-        #else
+#else
         auto idx = helpers::_get_pivot_index(base, lp, rp, comp);
-        #endif
+#endif
 
         auto p = base[idx];
 
@@ -726,8 +727,7 @@ namespace mpqsort::impl {
                 --j;
             } while (comp(p, base[j]));
 
-            if (i >= j)
-            {
+            if (i >= j) {
                 return j;
             }
 
@@ -753,12 +753,12 @@ namespace mpqsort::impl {
         // Use optimal swap method
         using std::swap;
 
-        // Get pivots
-        #ifdef MEASURE
+// Get pivots
+#ifdef MEASURE
         auto [idx1, idx2] = helpers::_get_pivots_indexes_two_medians(base, lp + 1, rp - 1, comp);
-        #else
+#else
         auto [idx1, idx2] = helpers::_get_pivots_indexes_two(base, lp + 1, rp - 1, comp);
-        #endif
+#endif
 
         MEASURE_SWAP_N(2);
         swap(base[lp], base[idx1]);
@@ -779,7 +779,7 @@ namespace mpqsort::impl {
                 MEASURE_COMP();
                 if (!comp(base[k], p2)) {
                     MEASURE_COMP();
-                    while (k < g && comp(p2, base[g])){
+                    while (k < g && comp(p2, base[g])) {
                         MEASURE_COMP();
                         --g;
                     }
@@ -826,12 +826,13 @@ namespace mpqsort::impl {
         // Use optimal swap method
         using std::swap;
 
-        // Get pivots
-        #ifdef MEASURE
-        auto [idx1, idx2, idx3] = helpers::_get_pivot_indexes_three_medians(base, lp + 2, rp - 1, comp);
-        #else
+// Get pivots
+#ifdef MEASURE
+        auto [idx1, idx2, idx3]
+            = helpers::_get_pivot_indexes_three_medians(base, lp + 2, rp - 1, comp);
+#else
         auto [idx1, idx2, idx3] = helpers::_get_pivot_indexes_three(base, lp + 2, rp - 1, comp);
-        #endif
+#endif
 
         // Move pivots to array edges
         MEASURE_SWAP_N(3);
@@ -1239,7 +1240,6 @@ namespace mpqsort::impl {
         std::sort(segment_ranges.begin(), segment_ranges.end(), [](const auto& p1, const auto& p2) {
             return (p1.second - p1.first) > (p2.second - p2.first);
         });
-
 
         // Parallel multiway sort of each segment
 // TODO: Decide if use 2 or 3 pivots sort

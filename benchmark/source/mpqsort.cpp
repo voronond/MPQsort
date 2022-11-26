@@ -215,17 +215,17 @@ struct RotatedOrderVectorFixture : public RandomVectorFixture<T, Size, From, To>
 
 // Helps to find out threshold when to switch to sequential algorithm
 #define small_sizes_threshold small_size_threshold
-#define register_bench_small_size_threshold(name)                                           \
-    register_bench_int_random(name, small_size_threshold##_##50000, 50000, -1, -1);         \
-    register_bench_int_random(name, small_size_threshold##_##100000, 100000, -1, -1);       \
-    register_bench_int_random(name, small_size_threshold##_##200000, 200000, -1, -1);       \
-    register_bench_int_random(name, small_size_threshold##_##300000, 300000, -1, -1);       \
-    register_bench_int_random(name, small_size_threshold##_##400000, 400000, -1, -1);       \
-    register_bench_int_random(name, small_size_threshold##_##500000, 500000, -1, -1);       \
-    register_bench_int_random(name, small_size_threshold##_##1000000, 1000000, -1, -1);     \
-    register_bench_int_random(name, small_size_threshold##_##10000000, 10000000, -1, -1);   \
+#define register_bench_small_size_threshold(name)                                         \
+    register_bench_int_random(name, small_size_threshold##_##50000, 50000, -1, -1);       \
+    register_bench_int_random(name, small_size_threshold##_##100000, 100000, -1, -1);     \
+    register_bench_int_random(name, small_size_threshold##_##200000, 200000, -1, -1);     \
+    register_bench_int_random(name, small_size_threshold##_##300000, 300000, -1, -1);     \
+    register_bench_int_random(name, small_size_threshold##_##400000, 400000, -1, -1);     \
+    register_bench_int_random(name, small_size_threshold##_##500000, 500000, -1, -1);     \
+    register_bench_int_random(name, small_size_threshold##_##1000000, 1000000, -1, -1);   \
+    register_bench_int_random(name, small_size_threshold##_##10000000, 10000000, -1, -1); \
     register_bench_int_random(name, small_size_threshold##_##100000000, 100000000, -1, -1);
-    //register_bench_int_random(name, small_size_threshold##_##500000000, 500000000, -1, -1);
+// register_bench_int_random(name, small_size_threshold##_##500000000, 500000000, -1, -1);
 
 // Parameters tuning par mpqsort
 #define mpqsort_parameters_tuning mpqsort_parameters_tuning
@@ -348,24 +348,24 @@ register_bench_mpqsort_parameters_tuning(mpqsort_par_sort_parameters_tuning);
 
 // Run mpqsort sequential two way benchmarks
 #define mpqsort_seq_two_way_sort(dataType, bench, type, size, from, to)                          \
-    BENCHMARK_TEMPLATE_DEFINE_F(dataType##VectorFixture,                                           \
+    BENCHMARK_TEMPLATE_DEFINE_F(dataType##VectorFixture,                                         \
                                 BM_mpqsort_seq_two_way_sort_##dataType##_##type##_##bench, type, \
-                                size, from, to)                                                    \
-    (benchmark::State & state) {                                                                   \
-        for (auto _ : state) {                                                                     \
-            state.PauseTiming();                                                                   \
-            Prepare();                                                                             \
-            state.ResumeTiming();                                                                  \
-            mpqsort::sort(mpqsort::execution::seq, vec.begin(), vec.end());              \
-            state.PauseTiming();                                                                   \
-            Destroy();                                                                             \
-            state.ResumeTiming();                                                                  \
-        }                                                                                          \
-    }                                                                                              \
-    BENCHMARK_REGISTER_F(dataType##VectorFixture,                                                  \
+                                size, from, to)                                                  \
+    (benchmark::State & state) {                                                                 \
+        for (auto _ : state) {                                                                   \
+            state.PauseTiming();                                                                 \
+            Prepare();                                                                           \
+            state.ResumeTiming();                                                                \
+            mpqsort::sort(mpqsort::execution::seq, vec.begin(), vec.end());                      \
+            state.PauseTiming();                                                                 \
+            Destroy();                                                                           \
+            state.ResumeTiming();                                                                \
+        }                                                                                        \
+    }                                                                                            \
+    BENCHMARK_REGISTER_F(dataType##VectorFixture,                                                \
                          BM_mpqsort_seq_two_way_sort_##dataType##_##type##_##bench)              \
-        ->MeasureProcessCPUTime()                                                                  \
-        ->UseRealTime()                                                                            \
+        ->MeasureProcessCPUTime()                                                                \
+        ->UseRealTime()                                                                          \
         ->Name(str(BM_mpqsort_seq_two_way_sort_##dataType##_##type##_##bench));
 
 // Run mpqsort sequential three way benchmarks
@@ -547,6 +547,6 @@ register_bench_small_sizes(nvidia_thrust_sort);
 
 register_bench_small_size_threshold(std_sort);
 register_bench_small_size_threshold(mpqsort_seq_two_way_sort)
-register_bench_small_size_threshold(mpqsort_seq_three_way_sort)
-    register_bench_small_size_threshold(mpqsort_seq_four_way_sort)
-        register_bench_small_size_threshold(mpqsort_par_sort)
+    register_bench_small_size_threshold(mpqsort_seq_three_way_sort)
+        register_bench_small_size_threshold(mpqsort_seq_four_way_sort)
+            register_bench_small_size_threshold(mpqsort_par_sort)
