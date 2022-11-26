@@ -337,15 +337,15 @@ namespace mpqsort::helpers {
         MEASURE_COMP_N(3);
         if (comp(el2.first, el1.first)) {
             MEASURE_SWAP();
-            swap(el1, el2);
+            swap(el1.second, el2.second);
         }
         if (comp(el3.first, el2.first)) {
             MEASURE_SWAP();
-            swap(el2, el3);
+            swap(el2.second, el3.second);
         }
         if (comp(el3.first, el1.first)) {
             MEASURE_SWAP();
-            swap(el1, el3);
+            swap(el1.second, el3.second);
         }
 
         return el2.second;
@@ -384,7 +384,7 @@ namespace mpqsort::helpers {
             // Get sample elements
             for (long i = 0; i < sample_size; ++i) {
                 auto index = size * i / sample_size + lp;
-                samples[i] = std::make_pair(base[index], index);
+                samples.emplace_back(std::make_pair(base[index], index));
             }
 
             // Sort samples based on provided comp
@@ -406,8 +406,16 @@ namespace mpqsort::helpers {
 
         auto size = rp - lp + 1;
 
-        if (size < sample_size)
-            return std::tuple{size * 1 / 3 + lp, size * 2 / 3 + lp};
+        if (size < sample_size) {
+            auto idx1 = size * 1 / 3 + lp, idx2 = size * 2 / 3 + lp;
+
+            MEASURE_COMP();
+            if (comp(base[idx1], base[idx2])) {
+                return std::tuple{idx1, idx2};
+            } else {
+                return std::tuple{idx2, idx1};
+            }
+        }
 
         long i1, i2, i3;
 
@@ -455,6 +463,8 @@ namespace mpqsort::helpers {
 
     template <typename RandomBaseIt, typename Comparator>
     inline auto _get_pivots_indexes_two(RandomBaseIt base, long lp, long rp, Comparator& comp) {
+        using std::swap;
+
         auto size = rp - lp + 1;
         const auto sample_size = parameters::ONE_PIVOT_SAMPLE_SIZE * 2;
         std::vector<std::pair<typename std::iterator_traits<RandomBaseIt>::value_type, long>>
@@ -463,12 +473,19 @@ namespace mpqsort::helpers {
 
         // If not enough elements for sampling
         if (size < sample_size) {
-            return std::tuple{size * 1 / 3 + lp, size * 2 / 3 + lp};
+            auto idx1 = size * 1 / 3 + lp, idx2 = size * 2 / 3 + lp;
+
+            MEASURE_COMP();
+            if (comp(base[idx1], base[idx2])) {
+                return std::tuple{idx1, idx2};
+            } else {
+                return std::tuple{idx2, idx1};
+            }
         } else {
             // Get sample elements
             for (long i = 0; i < sample_size; ++i) {
                 auto index = size * i / sample_size + lp;
-                samples[i] = std::make_pair(base[index], index);
+                samples.emplace_back(std::make_pair(base[index], index));
             }
 
             // Sort samples based on provided comp
@@ -491,27 +508,42 @@ namespace mpqsort::helpers {
 
         auto size = rp - lp + 1;
 
-        if (size < sample_size)
-            return std::tuple{size * 1 / 4 + lp, size * 2 / 4 + lp, size * 3 / 4 + lp};
+        if (size < sample_size) {
+            auto idx1 = size * 1 / 4 + lp, idx2 = size * 2 / 4 + lp, idx3 = size * 3 / 4 + lp;
+
+            // Sort pivots
+            MEASURE_COMP_N(3);
+            if (comp(base[idx2], base[idx1])) {
+                swap(idx1, idx2);
+            }
+            if (comp(base[idx3], base[idx1])) {
+                swap(idx1, idx3);
+            }
+            if (comp(base[idx3], base[idx2])) {
+                swap(idx2, idx3);
+            }
+
+            return std::tuple{idx1, idx2, idx3};
+        }
 
         long i1, i2, i3;
 
-        i1 = size / 4 + lp;
-        i2 = size / 4 * 2 + lp;
-        i3 = size / 4 * 3 + lp;
+        i1 = size * 1 / 4 + lp;
+        i2 = size * 2 / 4 + lp;
+        i3 = size * 3 / 4 + lp;
 
         MEASURE_COMP_N(3);
         if (comp(base[i2], base[i1])) {
             MEASURE_SWAP();
             swap(i1, i2);
         }
-        if (comp(base[i3], base[i2])) {
-            MEASURE_SWAP();
-            swap(i2, i3);
-        }
         if (comp(base[i3], base[i1])) {
             MEASURE_SWAP();
             swap(i1, i3);
+        }
+        if (comp(base[i3], base[i2])) {
+            MEASURE_SWAP();
+            swap(i2, i3);
         }
 
         return std::tuple{i1, i2, i3};
@@ -551,6 +583,8 @@ namespace mpqsort::helpers {
 
     template <typename RandomBaseIt, typename Comparator>
     inline auto _get_pivot_indexes_three(RandomBaseIt base, long lp, long rp, Comparator& comp) {
+        using std::swap;
+
         auto size = rp - lp + 1;
         const auto sample_size = parameters::ONE_PIVOT_SAMPLE_SIZE * 3;
         std::vector<std::pair<typename std::iterator_traits<RandomBaseIt>::value_type, long>>
@@ -559,12 +593,26 @@ namespace mpqsort::helpers {
 
         // If not enough elements for sampling
         if (size < sample_size) {
-            return std::tuple{size * 1 / 4 + lp, size * 2 / 4 + lp, size * 3 / 4 + lp};
+            auto idx1 = size * 1 / 4 + lp, idx2 = size * 2 / 4 + lp, idx3 = size * 3 / 4 + lp;
+
+            // Sort pivots
+            MEASURE_COMP_N(3);
+            if (comp(base[idx2], base[idx1])) {
+                swap(idx1, idx2);
+            }
+            if (comp(base[idx3], base[idx1])) {
+                swap(idx1, idx3);
+            }
+            if (comp(base[idx3], base[idx2])) {
+                swap(idx2, idx3);
+            }
+
+            return std::tuple{idx1, idx2, idx3};
         } else {
             // Get sample elements
             for (long i = 0; i < sample_size; ++i) {
                 auto index = size * i / sample_size + lp;
-                samples[i] = std::make_pair(base[index], index);
+                samples.emplace_back(std::make_pair(base[index], index));
             }
 
             // Sort samples based on provided comp
@@ -712,16 +760,9 @@ namespace mpqsort::impl {
         auto [idx1, idx2] = helpers::_get_pivots_indexes_two(base, lp + 1, rp - 1, comp);
         #endif
 
-        MEASURE_COMP();
-        if (comp(base[idx1], base[idx2])) {
-            swap(base[lp], base[idx1]);
-            swap(base[rp], base[idx2]);
-        } else {
-            swap(base[lp], base[idx2]);
-            swap(base[rp], base[idx1]);
-        }
-
         MEASURE_SWAP_N(2);
+        swap(base[lp], base[idx1]);
+        swap(base[rp], base[idx2]);
 
         const auto p1 = base[lp], p2 = base[rp];
 
@@ -792,27 +833,11 @@ namespace mpqsort::impl {
         auto [idx1, idx2, idx3] = helpers::_get_pivot_indexes_three(base, lp + 2, rp - 1, comp);
         #endif
 
-        // Sort pivots
-        MEASURE_COMP_N(3);
-        if (comp(base[idx2], base[idx1])) {
-            MEASURE_SWAP();
-            swap(base[idx1], base[idx2]);
-        }
-        if (comp(base[idx3], base[idx1])) {
-            MEASURE_SWAP();
-            swap(base[idx1], base[idx3]);
-        }
-        if (comp(base[idx3], base[idx2])) {
-            MEASURE_SWAP();
-            swap(base[idx2], base[idx3]);
-        }
-
         // Move pivots to array edges
         MEASURE_SWAP_N(3);
         swap(base[idx1], base[lp]);
         swap(base[idx2], base[lp + 1]);
         swap(base[idx3], base[rp]);
-
 
         // Indexes
         long k2, k, g, g2;
