@@ -70,7 +70,6 @@ namespace mpqsort::execution {
     class sequenced_policy_max_way {};
     class parallel_policy_max_way {};
 
-    // TODO: maybe add unseq if possible (standard and self defined)
     /**
      * @brief Sequenced execution policy from std
      */
@@ -192,10 +191,16 @@ namespace mpqsort::parameters {
     static long PAR_PARTITION_NUM_PIVOTS = (1 << 7) - 1;
 
     /**
-     * @brief Number of elements to chose a pivot from
-     * Determined hos many elements from an input array we want to consider to chose one pivot
+     * @brief Number of elements to chose a pivot from in a first parallel multiway partitioning
+     * Determined hos many elements from an input array we want to consider to chose one pivot when we do the first parallel partitioning
      */
-    static long ONE_PIVOT_SAMPLE_SIZE = 20;
+    static long ONE_PIVOT_PAR_MULT_PARTITIONING_SAMPLE_SIZE = 20;
+
+    /**
+     * @brief Number of elements to chose a pivot from an array in parallel multiway qsorts
+     * Array was already splitted up in PAR_PARTITION_NUM_PIVOTS + 1 segments so parallel sorts does not need to be as precise.
+     */
+    static long ONE_PIVOT_PAR_SORT_SAMPLE_SIZE = 5;
 }  // namespace mpqsort::parameters
 
 namespace mpqsort::helpers {
@@ -371,7 +376,7 @@ namespace mpqsort::helpers {
     template <typename RandomBaseIt, typename Comparator>
     inline auto _get_pivot_index(RandomBaseIt base, long lp, long rp, Comparator& comp) {
         auto size = rp - lp + 1;
-        const auto sample_size = parameters::ONE_PIVOT_SAMPLE_SIZE;
+        const auto sample_size = parameters::ONE_PIVOT_PAR_SORT_SAMPLE_SIZE;
         std::vector<std::pair<typename std::iterator_traits<RandomBaseIt>::value_type, long>>
             samples;
         samples.reserve(sample_size);
@@ -466,7 +471,7 @@ namespace mpqsort::helpers {
         using std::swap;
 
         auto size = rp - lp + 1;
-        const auto sample_size = parameters::ONE_PIVOT_SAMPLE_SIZE * 2;
+        const auto sample_size = parameters::ONE_PIVOT_PAR_SORT_SAMPLE_SIZE * 2;
         std::vector<std::pair<typename std::iterator_traits<RandomBaseIt>::value_type, long>>
             samples;
         samples.reserve(sample_size);
@@ -587,7 +592,7 @@ namespace mpqsort::helpers {
         using std::swap;
 
         auto size = rp - lp + 1;
-        const auto sample_size = parameters::ONE_PIVOT_SAMPLE_SIZE * 3;
+        const auto sample_size = parameters::ONE_PIVOT_PAR_SORT_SAMPLE_SIZE * 3;
         std::vector<std::pair<typename std::iterator_traits<RandomBaseIt>::value_type, long>>
             samples;
         samples.reserve(sample_size);
@@ -633,7 +638,7 @@ namespace mpqsort::helpers {
     inline auto _get_pivots(RandomBaseIt base, long lp, long rp, long num_pivots,
                             Comparator& comp) {
         auto size = rp - lp + 1;
-        const auto sample_size = parameters::ONE_PIVOT_SAMPLE_SIZE * num_pivots;
+        const auto sample_size = parameters::ONE_PIVOT_PAR_MULT_PARTITIONING_SAMPLE_SIZE * num_pivots;
 
         assert("num_pivots must be 2^k - 1" && (num_pivots + 1) > 0
                && ((num_pivots + 1) & (num_pivots)) == 0);
@@ -701,15 +706,20 @@ namespace mpqsort::impl {
     // OpenMP mergeable possible if shared variables (code gets executed as separate task or not)
     // SEQ
 
-    template <typename RandomBaseIt, typename Compare>
+    template <bool Par = false, typename RandomBaseIt, typename Compare>
     inline auto _seq_partition_one_pivot(RandomBaseIt base, long lp, long rp, Compare& comp) {
         // Use optimal swap method
         using std::swap;
+        long idx;
 
 #ifdef MEASURE
-        auto idx = helpers::_get_pivot_index_median(base, lp, rp, comp);
+        idx = helpers::_get_pivot_index_median(base, lp, rp, comp);
 #else
-        auto idx = helpers::_get_pivot_index(base, lp, rp, comp);
+        if constexpr (Par) {
+            idx = helpers::_get_pivot_index(base, lp, rp, comp);
+        } else {
+            idx = helpers::_get_pivot_index_median(base, lp, rp, comp);
+        }
 #endif
 
         auto p = base[idx];
@@ -747,17 +757,22 @@ namespace mpqsort::impl {
         helpers::_heap_insertion_sort(base, lp, rp, comp);
     }
 
-    template <typename RandomBaseIt, typename Compare>
+    template <bool Par = false, typename RandomBaseIt, typename Compare>
     inline auto _seq_multiway_partition_two_pivots(RandomBaseIt base, long lp, long rp,
                                                    Compare& comp) {
         // Use optimal swap method
         using std::swap;
+        long idx1, idx2;
 
 // Get pivots
 #ifdef MEASURE
-        auto [idx1, idx2] = helpers::_get_pivots_indexes_two_medians(base, lp + 1, rp - 1, comp);
+        tie(idx1, idx2) = helpers::_get_pivots_indexes_two_medians(base, lp + 1, rp - 1, comp);
 #else
-        auto [idx1, idx2] = helpers::_get_pivots_indexes_two(base, lp + 1, rp - 1, comp);
+        if constexpr (Par) {
+            std::tie(idx1, idx2) = helpers::_get_pivots_indexes_two(base, lp + 1, rp - 1, comp);
+        } else {
+            std::tie(idx1, idx2) = helpers::_get_pivots_indexes_two_medians(base, lp + 1, rp - 1, comp);
+        }
 #endif
 
         MEASURE_SWAP_N(2);
@@ -820,18 +835,24 @@ namespace mpqsort::impl {
         helpers::_heap_insertion_sort(base, lp, rp, comp);
     }
 
-    template <typename RandomBaseIt, typename Compare>
+    template <bool Par = false, typename RandomBaseIt, typename Compare>
     inline auto _seq_multiway_partition_three_pivots(RandomBaseIt base, const long lp,
                                                      const long rp, Compare& comp) {
         // Use optimal swap method
         using std::swap;
+        long idx1, idx2, idx3;
 
 // Get pivots
 #ifdef MEASURE
-        auto [idx1, idx2, idx3]
+        std::tie(idx1, idx2, idx3)
             = helpers::_get_pivot_indexes_three_medians(base, lp + 2, rp - 1, comp);
 #else
-        auto [idx1, idx2, idx3] = helpers::_get_pivot_indexes_three(base, lp + 2, rp - 1, comp);
+        if constexpr (Par) {
+            std::tie(idx1, idx2, idx3) = helpers::_get_pivot_indexes_three(base, lp + 2, rp - 1, comp);
+        } else {
+            std::tie(idx1, idx2, idx3)
+                = helpers::_get_pivot_indexes_three_medians(base, lp + 2, rp - 1, comp);
+        }
 #endif
 
         // Move pivots to array edges
@@ -965,7 +986,7 @@ namespace mpqsort::impl {
         // Only recursive calling is in parallel, partitioning does not need to be thanks to
         // multiway_parallel_partitioning at the beginning
         while (rp - lp > parameters::NO_RECURSION_THRESHOLD && depth > 0) {
-            auto indexes = _seq_multiway_partition_three_pivots(base, lp, rp, comp);
+            auto indexes = _seq_multiway_partition_three_pivots<true>(base, lp, rp, comp);
 
             if (std::get<0>(indexes) - lp > parameters::SEQ_THRESHOLD) {
 #pragma omp task
