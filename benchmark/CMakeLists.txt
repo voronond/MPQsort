@@ -14,6 +14,7 @@ include(../cmake/tools.cmake)
 
 include(../cmake/CPM.cmake)
 
+
 CPMAddPackage(
     NAME benchmark
     GITHUB_REPOSITORY google/benchmark
@@ -28,6 +29,11 @@ CPMFindPackage(
     GITHUB_REPOSITORY oneapi-src/oneTBB
     VERSION 2021.5.0
 )
+
+if(POLICY CMP0135)
+	cmake_policy(SET CMP0135 NEW)
+	set(CMAKE_POLICY_DEFAULT_CMP0135 NEW)
+endif()
 
 # Cant use CPM because we need the whole CUDA toolkit, which contains thrust and other needed
 # headers
@@ -44,7 +50,7 @@ file(GLOB sources CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/source/*.cpp)
 add_executable(${PROJECT_NAME} ${sources})
 
 target_link_libraries(
-    ${PROJECT_NAME} Thrust::OMP::Host TBB::tbb benchmark::benchmark MPQsort::MPQsort
+    ${PROJECT_NAME} Thrust::OMP::Host TBB::tbb benchmark::benchmark papi MPQsort::MPQsort
 )
 
 # Link OpenMP dependencies

@@ -5,6 +5,7 @@
 #include <tbb/tbb.h>
 #include <thrust/sort.h>
 #include <unistd.h>
+#include <papi.h>
 
 #include <algorithm>
 #include <iostream>
@@ -15,6 +16,31 @@
 
 // TODO: remove when released
 #define TESTING
+#define PAPI
+
+#ifdef PAPI
+long long PAPI_counters[6];
+int PAPI_events[] = {
+    PAPI_L1_DCM,
+    PAPI_L1_DCA,
+    PAPI_L2_DCM,
+    PAPI_L2_DCA,
+    PAPI_L3_DCM,
+    PAPI_L3_DCA
+};
+
+#define PAPI_INIT() PAPI_library_init(PAPI_VER_CURRENT)
+#define PAPI_START() PAPI_start_counters(PAPI_events, 6)
+#define PAPI_END_READ() PAPI_read_counters(PAPI_counters, 6) \
+std::cout << PAPI_counters[0] << " L1 cache misses (" << (double)PAPI_counters[0] / (double)PAPI_counters[1] << ")" << std::endl;\
+std::cout << PAPI_counters[2] << " L2 cache misses (" << (double)PAPI_counters[2] / (double)PAPI_counters[3] << ")" << std::endl;\
+std::cout << PAPI_counters[4] << " L3 cache misses (" << (double)PAPI_counters[4] / (double)PAPI_counters[5] << ")" << std::endl
+#else
+#define PAPI_INIT()
+#define PAPI_START()
+#define PAPI_END_READ()
+#endif
+
 
 // Possible vector types
 using VECTOR_TYPES = std::tuple<int, short, double>;
@@ -354,6 +380,8 @@ register_bench_mpqsort_parameters_tuning(mpqsort_par_sort_parameters_tuning);
                                 BM_mpqsort_seq_two_way_sort_##dataType##_##type##_##bench, type, \
                                 size, from, to)                                                  \
     (benchmark::State & state) {                                                                 \
+        PAPI_INIT();\
+        PAPI_START();\
         for (auto _ : state) {                                                                   \
             state.PauseTiming();                                                                 \
             Prepare();                                                                           \
@@ -363,6 +391,7 @@ register_bench_mpqsort_parameters_tuning(mpqsort_par_sort_parameters_tuning);
             Destroy();                                                                           \
             state.ResumeTiming();                                                                \
         }                                                                                        \
+        PAPI_END_READ();\
     }                                                                                            \
     BENCHMARK_REGISTER_F(dataType##VectorFixture,                                                \
                          BM_mpqsort_seq_two_way_sort_##dataType##_##type##_##bench)              \
