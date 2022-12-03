@@ -1040,7 +1040,7 @@ namespace mpqsort::impl {
         auto idx_ptr = segment_idx.data();
 
 // Find boundaries of segments
-#pragma omp parallel for reduction(+ : idx_ptr[:num_segments])
+#pragma omp parallel for reduction(+ : idx_ptr[:num_segments]) num_threads(cores)
         for (long i = lp; i <= rp; ++i) {
             auto segment_id = helpers::_find_element_segment_id(num_element_comparisons, pivots,
                                                                 pivots.size(), base[i], comp);
@@ -1229,7 +1229,7 @@ namespace mpqsort::impl {
         }
 
 // Insert elements from tables in an array
-#pragma omp parallel for
+#pragma omp parallel for num_threads(cores)
         for (size_t i = 0; i < elements_insertions_index.size(); ++i) {
             for (int j = 0; j < elements_insertions_index[i]; ++j) {
                 base[elements_insertions[INDEX(i, j, table_height)]]
@@ -1264,7 +1264,7 @@ namespace mpqsort::impl {
 
         // Parallel multiway sort of each segment
 // TODO: Decide if use 2 or 3 pivots sort
-#pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for schedule(dynamic) num_threads(cores)
         for (size_t i = 0; i < segment_ranges.size(); i++) {
             _par_multiway_qsort_inner_waterloo(base, segment_ranges[i].first,
                                                segment_ranges[i].second, comp,
