@@ -50,7 +50,7 @@ file(GLOB sources CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/source/*.cpp)
 add_executable(${PROJECT_NAME} ${sources})
 
 target_link_libraries(
-    ${PROJECT_NAME} Thrust::OMP::Host TBB::tbb benchmark::benchmark papi MPQsort::MPQsort
+    ${PROJECT_NAME} Thrust::OMP::Host TBB::tbb benchmark::benchmark MPQsort::MPQsort
 )
 
 # Link OpenMP dependencies
