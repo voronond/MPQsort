@@ -311,7 +311,7 @@ register_bench_small_values_range(mpqsort_par_sort);
 
 // Run mpqsort parallel benchmarks parameters tuning
 // Arguments passed in this order:
-// BLOCK_SIZE, SEQ_THRESHOLD, NO_RECURSION_THRESHOLD, PAR_PARTITION_NUM_PIVOTS,
+// BLOCK_SIZE, SEQ_THRESHOLD, NO_RECURSION_THRESHOLD, 
 // ONE_PIVOT_PAR_MULT_PARTITIONING_SAMPLE_SIZE, ONE_PIVOT_PAR_SORT_SAMPLE_SIZE
 #define mpqsort_par_sort_parameters_tuning(dataType, bench, type, size, from, to)                  \
     BENCHMARK_TEMPLATE_DEFINE_F(                                                                   \
@@ -324,7 +324,6 @@ register_bench_small_values_range(mpqsort_par_sort);
             mpqsort::parameters::BLOCK_SIZE = state.range(0);                                      \
             mpqsort::parameters::SEQ_THRESHOLD = state.range(1);                                   \
             mpqsort::parameters::NO_RECURSION_THRESHOLD = state.range(2);                          \
-            mpqsort::parameters::PAR_PARTITION_NUM_PIVOTS = state.range(3) - 1;                    \
             mpqsort::parameters::ONE_PIVOT_PAR_MULT_PARTITIONING_SAMPLE_SIZE = state.range(4);     \
             mpqsort::parameters::ONE_PIVOT_PAR_SORT_SAMPLE_SIZE = state.range(5);                  \
             state.ResumeTiming();                                                                  \
@@ -342,7 +341,6 @@ register_bench_small_values_range(mpqsort_par_sort);
         ->ArgsProduct({benchmark::CreateRange(256, 4096, 2),                                       \
                        benchmark::CreateRange(1 << 18, 1 << 20, 2),                                \
                        benchmark::CreateRange(32, 256, 2),                                         \
-                       benchmark::CreateRange(64, 256, 2),                                         \
                        {10, 15, 20},                                                    \
                        {3, 5}});
 

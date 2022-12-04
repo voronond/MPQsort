@@ -205,13 +205,6 @@ namespace mpqsort::parameters {
     const static long MAX_NUMBER_OF_PIVOTS = 3;  // can't be changed during runtime
 
     /**
-     * @brief Number of pivots used in multiway parallel partitioning
-     * Number for pivots used to divide array in PAR_PARTITION_NUM_PIVOTS + 1 segments. This is done
-     * only once and parallel multiway qsort is called afterwards on each such segment.
-     */
-    static long PAR_PARTITION_NUM_PIVOTS = (1 << 7) - 1;
-
-    /**
      * @brief Number of elements to chose a pivot from in a first parallel multiway partitioning
      * Determined hos many elements from an input array we want to consider to chose one pivot when we do the first parallel partitioning
      */
@@ -219,7 +212,7 @@ namespace mpqsort::parameters {
 
     /**
      * @brief Number of elements to chose a pivot from an array in parallel multiway qsorts
-     * Array was already splitted up in PAR_PARTITION_NUM_PIVOTS + 1 segments so parallel sorts does not need to be as precise.
+     * Array was already splitted up in num_pivots + 1 segments so parallel sorts does not need to be as precise.
      */
     static long ONE_PIVOT_PAR_SORT_SAMPLE_SIZE = 5;
 }  // namespace mpqsort::parameters
@@ -1294,7 +1287,6 @@ namespace mpqsort::impl {
     template <typename NumPivot, typename Cores, typename RandomBaseIt, typename Compare>
     void _par_multiway_qsort_inner(NumPivot pivot_num, Cores cores, RandomBaseIt base, size_t lp,
                                    size_t rp, Compare& comp) {
-        // Parallel multiway partition using 2^k - 1 pivots
         auto boundaries = _par_multiway_partition(pivot_num, cores, base, lp, rp, comp);
 
         // Create ranges {start, end} for segments
@@ -1325,18 +1317,21 @@ namespace mpqsort::impl {
 
     // ----- Main implementation END -----
 
-    template <typename NumPivot, typename Cores, typename RandomIt,
+    template <typename Cores, typename RandomIt,
               typename Compare = std::less<typename std::iterator_traits<RandomIt>::value_type>>
-    void _par_multiway_qsort(NumPivot pivot_num, Cores cores, RandomIt first, RandomIt last,
+    void _par_multiway_qsort(Cores cores, RandomIt first, RandomIt last,
                              Compare comp = Compare()) {
         if (last - first <= 1) return;
+
+        // Set to best number of pivots, always greater than num threads but power of 2 - 1
+        long pivot_num = (1 << (long)std::ceil(std::log2(cores))) - 1;
 
         // Allow MAX nested parallelism
         omp_set_max_active_levels(std::numeric_limits<int>::max());
 
         // Should not normally happen, but we set SEQ_THRESHOLD to 0 during testing
         if (last - first
-            > std::max(parameters::SEQ_THRESHOLD, parameters::PAR_PARTITION_NUM_PIVOTS)) {
+            > std::max(parameters::SEQ_THRESHOLD, pivot_num)) {
             _par_multiway_qsort_inner(pivot_num, cores, first, 0, last - first - 1, comp);
         } else {
             _seq_multiway_qsort(3, first, last, comp);
@@ -1344,11 +1339,11 @@ namespace mpqsort::impl {
     }
 
     // Wrapper for different arguments
-    template <typename NumPivot, typename RandomIt,
+    template <typename RandomIt,
               typename Compare = std::less<typename std::iterator_traits<RandomIt>::value_type>>
-    void _par_multiway_qsort(NumPivot pivot_num, RandomIt first, RandomIt last,
+    void _par_multiway_qsort(RandomIt first, RandomIt last,
                              Compare comp = Compare()) {
-        _par_multiway_qsort(pivot_num, omp_get_max_threads(), first, last, comp);
+        _par_multiway_qsort(omp_get_max_threads(), first, last, comp);
     }
 
     // Call sort based on policy type
@@ -1375,7 +1370,7 @@ namespace mpqsort::impl {
             // Let algorithm decide how many pivots to use
             _seq_multiway_qsort(parameters::MAX_NUMBER_OF_PIVOTS, std::forward<T>(args)...);
         } else if constexpr (helpers::_is_same_decay_v<ExecutionPolicy, decltype(execution::par)>) {
-            _par_multiway_qsort(parameters::PAR_PARTITION_NUM_PIVOTS, std::forward<T>(args)...);
+            _par_multiway_qsort(std::forward<T>(args)...);
         } else {
             throw std::invalid_argument(
                 "Unknown policy. This should never happen as we test policy type at a beginning of "
