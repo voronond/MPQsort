@@ -15,6 +15,7 @@
 // TODO: Remove when done
 //#define DEBUG
 //#define MEASURE
+//#define TIME_MEASURE
 
 #ifdef DEBUG
 #    define PRINT_ITERS(base, lp, rp, msg) mpqsort::helpers::print(base, lp, rp, msg)
@@ -54,6 +55,20 @@ size_t NUM_COMP = 0;
 #    define MEASURE_COMP()
 #    define MEASURE_COMP_N(n)
 #    define MEASURE_RESULTS(msg)
+#endif
+
+#ifdef TIME_MEASURE
+#    define TIME_MEASURE_START(name) \
+        std::chrono::steady_clock::time_point name = std::chrono::steady_clock::now();
+#    define TIME_MEASURE_END(name_start, name_end, msg)                                           \
+        std::chrono::steady_clock::time_point name_end = std::chrono::steady_clock::now();        \
+        std::cout << msg << " "                                                                   \
+                  << std::chrono::duration_cast<std::chrono::milliseconds>(name_end - name_start) \
+                         .count()                                                                 \
+                  << std::endl
+#else
+#    define TIME_MEASURE_START(name)
+#    define TIME_MEASURE_END(name_start, name_end, msg)
 #endif
 
 #define INDEX(a, b, size) (a) * (size) + (b)
@@ -163,6 +178,12 @@ namespace mpqsort::parameters {
      * atomic/critical sections.
      */
     static long BLOCK_SIZE = 1 << 9;
+
+    /**
+     * @brief Length of one cache line
+     * Set to one cache line size to maximize performance (number of bytes);
+     */
+    static long CACHE_LINE_SIZE = 64;
 
     /**
      * @brief When to switch to sequential algorithm from parallel
@@ -1036,16 +1057,46 @@ namespace mpqsort::impl {
         auto pivots = helpers::_get_pivots(base, lp, rp, num_pivots, comp);
 
         // Indexes in blocks
-        std::vector<long> segment_idx(num_pivots + 1);
-        auto idx_ptr = segment_idx.data();
+        std::vector<long> segment_idx(num_pivots + 1, 0);
 
-// Find boundaries of segments
-#pragma omp parallel for reduction(+ : idx_ptr[:num_segments]) num_threads(cores)
-        for (long i = lp; i <= rp; ++i) {
-            auto segment_id = helpers::_find_element_segment_id(num_element_comparisons, pivots,
-                                                                pivots.size(), base[i], comp);
-            ++idx_ptr[segment_id];
+        // Find boundaries of segments
+        long* sums;
+#pragma omp parallel num_threads(cores)
+        {
+            const int nthreads = omp_get_num_threads();
+            const int ithread = omp_get_thread_num();
+            // Round segment size to cacheline size
+            const int num_segments_rounded
+                = (long)std::ceil((num_segments * sizeof(long) + parameters::CACHE_LINE_SIZE - 1)
+                                  / parameters::CACHE_LINE_SIZE)
+                  * parameters::CACHE_LINE_SIZE;
+            const int ithread_seg_start = ithread * num_segments_rounded;
+
+#pragma omp single
+                sums = new long[nthreads * num_segments_rounded];
+
+            // Initialize private segments
+            for (int i = 0; i < num_segments; ++i) {
+                sums[ithread_seg_start + i] = 0;
+            }
+
+#pragma omp for schedule(static)
+            for (long i = lp; i <= rp; ++i) {
+                auto segment_id = helpers::_find_element_segment_id(
+                    num_element_comparisons, pivots.begin(), pivots.size(), base[i], comp);
+                ++sums[segment_id + ithread_seg_start];
+            }
+
+#pragma omp for schedule(static)
+            for (int i = 0; i < num_segments; ++i) {
+                long sum = 0;
+                for (int j = 0; j < nthreads; ++j) {
+                    sum += sums[i + j * num_segments_rounded];
+                }
+                segment_idx[i] = sum;
+            }
         }
+        delete[] sums;
 
         // Compute beginning of each segment
         std::exclusive_scan(segment_idx.begin(), segment_idx.end(), segment_idx.begin(), 0);
