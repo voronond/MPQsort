@@ -2,8 +2,8 @@
 #include <mpqsort/mpqsort.h>
 #include <mpqsort/version.h>
 #include <omp.h>
-#include <tbb/tbb.h>
-#include <thrust/sort.h>
+//#include <tbb/tbb.h>
+//#include <thrust/sort.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -497,6 +497,7 @@ register_bench_small_sizes(gnu_bqs_sort);
 register_bench_default(gnu_mwms_sort);
 register_bench_small_sizes(gnu_mwms_sort);
 
+/*
 // Run tbb sort benchmarks
 #define tbb_sort(dataType, bench, type, size, from, to)                                          \
     BENCHMARK_TEMPLATE_DEFINE_F(dataType##VectorFixture,                                         \
@@ -544,6 +545,7 @@ register_bench_small_sizes(tbb_sort);
 
 register_bench_default(nvidia_thrust_sort);
 register_bench_small_sizes(nvidia_thrust_sort);
+*/
 
 register_bench_small_size_threshold(std_sort);
 register_bench_small_size_threshold(mpqsort_seq_two_way_sort);

@@ -23,11 +23,11 @@ CPMAddPackage(
 # Check if TBB installed and if not, build from sources TBB is not currenty compatible with GCC 12
 # so it would be better to download binary and extract that to /usr/local and rename folder to tbb
 # Tutorial: https://stackoverflow.com/questions/36534706/trouble-linking-intel-tbb-library
-CPMFindPackage(
-    NAME TBB
-    GITHUB_REPOSITORY oneapi-src/oneTBB
-    VERSION 2021.5.0
-)
+#CPMFindPackage(
+#    NAME TBB
+#    GITHUB_REPOSITORY oneapi-src/oneTBB
+#    VERSION 2021.5.0
+#)
 
 if(POLICY CMP0135)
     cmake_policy(SET CMP0135 NEW)
@@ -36,8 +36,8 @@ endif()
 
 # Cant use CPM because we need the whole CUDA toolkit, which contains thrust and other needed
 # headers
-find_package(Thrust REQUIRED)
-thrust_create_target(ThrustOMP HOST OMP)
+#find_package(Thrust REQUIRED)
+#thrust_create_target(ThrustOMP HOST OMP)
 
 CPMAddPackage("gh:TheLartians/Format.cmake@1.7.3")
 
@@ -49,7 +49,8 @@ file(GLOB sources CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/source/*.cpp)
 add_executable(${PROJECT_NAME} ${sources})
 
 target_link_libraries(
-    ${PROJECT_NAME} Thrust::OMP::Host TBB::tbb benchmark::benchmark MPQsort::MPQsort
+#    ${PROJECT_NAME} Thrust::OMP::Host TBB::tbb benchmark::benchmark MPQsort::MPQsort
+    ${PROJECT_NAME} benchmark::benchmark MPQsort::MPQsort
 )
 
 # Link OpenMP dependencies
