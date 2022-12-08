@@ -14,7 +14,6 @@ include(../cmake/tools.cmake)
 
 include(../cmake/CPM.cmake)
 
-
 CPMAddPackage(
     NAME benchmark
     GITHUB_REPOSITORY google/benchmark
@@ -31,8 +30,8 @@ CPMFindPackage(
 )
 
 if(POLICY CMP0135)
-	cmake_policy(SET CMP0135 NEW)
-	set(CMAKE_POLICY_DEFAULT_CMP0135 NEW)
+    cmake_policy(SET CMP0135 NEW)
+    set(CMAKE_POLICY_DEFAULT_CMP0135 NEW)
 endif()
 
 # Cant use CPM because we need the whole CUDA toolkit, which contains thrust and other needed

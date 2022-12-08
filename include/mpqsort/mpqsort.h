@@ -183,7 +183,7 @@ namespace mpqsort::parameters {
      * @brief Length of one cache line
      * Set to one cache line size to maximize performance (number of bytes);
      */
-    //static long CACHE_LINE_SIZE = 64;
+    // static long CACHE_LINE_SIZE = 64;
 
     /**
      * @brief When to switch to sequential algorithm from parallel
@@ -220,7 +220,8 @@ namespace mpqsort::parameters {
 
     /**
      * @brief Number of elements to chose a pivot from an array in parallel multiway qsorts
-     * Array was already splitted up in num_pivots + 1 segments so parallel sorts does not need to be as precise.
+     * Array was already splitted up in num_pivots + 1 segments so parallel sorts does not need to
+     * be as precise.
      */
     static long ONE_PIVOT_PAR_SORT_SAMPLE_SIZE = 2;
 }  // namespace mpqsort::parameters
@@ -660,7 +661,8 @@ namespace mpqsort::helpers {
     inline auto _get_pivots(RandomBaseIt base, long lp, long rp, long num_pivots,
                             Comparator& comp) {
         auto size = rp - lp + 1;
-        const auto sample_size = parameters::ONE_PIVOT_PAR_MULT_PARTITIONING_SAMPLE_SIZE * num_pivots;
+        const auto sample_size
+            = parameters::ONE_PIVOT_PAR_MULT_PARTITIONING_SAMPLE_SIZE * num_pivots;
 
         assert("num_pivots must be 2^k - 1" && (num_pivots + 1) > 0
                && ((num_pivots + 1) & (num_pivots)) == 0);
@@ -793,7 +795,8 @@ namespace mpqsort::impl {
         if constexpr (Par) {
             std::tie(idx1, idx2) = helpers::_get_pivots_indexes_two(base, lp + 1, rp - 1, comp);
         } else {
-            std::tie(idx1, idx2) = helpers::_get_pivots_indexes_two_medians(base, lp + 1, rp - 1, comp);
+            std::tie(idx1, idx2)
+                = helpers::_get_pivots_indexes_two_medians(base, lp + 1, rp - 1, comp);
         }
 #endif
 
@@ -870,7 +873,8 @@ namespace mpqsort::impl {
             = helpers::_get_pivot_indexes_three_medians(base, lp + 2, rp - 1, comp);
 #else
         if constexpr (Par) {
-            std::tie(idx1, idx2, idx3) = helpers::_get_pivot_indexes_three(base, lp + 2, rp - 1, comp);
+            std::tie(idx1, idx2, idx3)
+                = helpers::_get_pivot_indexes_three(base, lp + 2, rp - 1, comp);
         } else {
             std::tie(idx1, idx2, idx3)
                 = helpers::_get_pivot_indexes_three_medians(base, lp + 2, rp - 1, comp);
@@ -1118,94 +1122,94 @@ namespace mpqsort::impl {
             }
         }
 
-    segment_boundary.back() = rp + 1;
-    segment_idx[0] = 0;
-    for (size_t i = 0; i < segment_boundary.size() - 1; ++i) {
-        segment_idx[i + 1] = segment_boundary[i];
-    }
-
-    /*
-    long* sums;
-#pragma omp parallel num_threads(cores)
-    {
-        const int nthreads = omp_get_num_threads();
-        const int ithread = omp_get_thread_num();
-        // Round segment size to cacheline size
-        const int num_segments_rounded
-            = (long)std::ceil((num_segments * sizeof(long) + parameters::CACHE_LINE_SIZE - 1)
-                              / parameters::CACHE_LINE_SIZE)
-              * parameters::CACHE_LINE_SIZE;
-        const int ithread_seg_start = ithread * num_segments_rounded;
-
-#pragma omp single
-            sums = new long[nthreads * num_segments_rounded];
-
-        // Initialize private segments
-        for (int i = 0; i < num_segments; ++i) {
-            sums[ithread_seg_start + i] = 0;
+        segment_boundary.back() = rp + 1;
+        segment_idx[0] = 0;
+        for (size_t i = 0; i < segment_boundary.size() - 1; ++i) {
+            segment_idx[i + 1] = segment_boundary[i];
         }
 
-#pragma omp for schedule(static)
-        for (long i = lp; i <= rp; ++i) {
-            auto segment_id = helpers::_find_element_segment_id(
-                num_element_comparisons, pivots.begin(), pivots.size(), base[i], comp);
-            ++sums[segment_id + ithread_seg_start];
-        }
+        /*
+        long* sums;
+    #pragma omp parallel num_threads(cores)
+        {
+            const int nthreads = omp_get_num_threads();
+            const int ithread = omp_get_thread_num();
+            // Round segment size to cacheline size
+            const int num_segments_rounded
+                = (long)std::ceil((num_segments * sizeof(long) + parameters::CACHE_LINE_SIZE - 1)
+                                  / parameters::CACHE_LINE_SIZE)
+                  * parameters::CACHE_LINE_SIZE;
+            const int ithread_seg_start = ithread * num_segments_rounded;
 
-#pragma omp for schedule(static)
-        for (int i = 0; i < num_segments; ++i) {
-            long sum = 0;
-            for (int j = 0; j < nthreads; ++j) {
-                sum += sums[i + j * num_segments_rounded];
+    #pragma omp single
+                sums = new long[nthreads * num_segments_rounded];
+
+            // Initialize private segments
+            for (int i = 0; i < num_segments; ++i) {
+                sums[ithread_seg_start + i] = 0;
             }
-            segment_idx[i] = sum;
+
+    #pragma omp for schedule(static)
+            for (long i = lp; i <= rp; ++i) {
+                auto segment_id = helpers::_find_element_segment_id(
+                    num_element_comparisons, pivots.begin(), pivots.size(), base[i], comp);
+                ++sums[segment_id + ithread_seg_start];
+            }
+
+    #pragma omp for schedule(static)
+            for (int i = 0; i < num_segments; ++i) {
+                long sum = 0;
+                for (int j = 0; j < nthreads; ++j) {
+                    sum += sums[i + j * num_segments_rounded];
+                }
+                segment_idx[i] = sum;
+            }
         }
-    }
-    delete[] sums;
+        delete[] sums;
 
-    // Compute beginning of each segment
-    std::exclusive_scan(segment_idx.begin(), segment_idx.end(), segment_idx.begin(), 0);
+        // Compute beginning of each segment
+        std::exclusive_scan(segment_idx.begin(), segment_idx.end(), segment_idx.begin(), 0);
 
-    // Create boundaries for each segment
-    std::vector<long> segment_boundary(segment_idx.begin() + 1, segment_idx.end());
-    segment_boundary.emplace_back(rp + 1);
-    */
+        // Create boundaries for each segment
+        std::vector<long> segment_boundary(segment_idx.begin() + 1, segment_idx.end());
+        segment_boundary.emplace_back(rp + 1);
+        */
 
-    // If index already >= boundary => segment clean and no elements belong in it
-    for (size_t i = 0; i < segment_idx.size(); ++i) {
-        if (segment_idx[i] == segment_boundary[i]) --num_segments_left;
-    }
-
-    // Returns if element belongs to given segment
-    auto element_in_segment = [&](auto& el, size_t segment) {
-        // Compound logical comparison to prevent redundant branching
-        return (segment == 0 || !comp(el, pivots[segment - 1]))
-               && (segment == segment_idx.size() || comp(el, pivots[segment]));
-    };
-
-    auto find_unprocessed_segment = [&](auto& segment) -> bool {
+        // If index already >= boundary => segment clean and no elements belong in it
         for (size_t i = 0; i < segment_idx.size(); ++i) {
-            ++segment %= segment_idx.size();
-            if (segment_idx[segment] < segment_boundary[segment]) return true;
+            if (segment_idx[i] == segment_boundary[i]) --num_segments_left;
         }
-        // All segments processed
-        return false;
-    };
 
-    // This is the max number of elements that can be inserted in one table "segment"
-    int table_height = (cores - 1) * parameters::BLOCK_SIZE;
+        // Returns if element belongs to given segment
+        auto element_in_segment = [&](auto& el, size_t segment) {
+            // Compound logical comparison to prevent redundant branching
+            return (segment == 0 || !comp(el, pivots[segment - 1]))
+                   && (segment == segment_idx.size() || comp(el, pivots[segment]));
+        };
 
-    // Table of indexes where is the emtpy space to insert an element
-    std::vector<long> elements_insertions(num_segments* table_height);
-    std::vector<long> elements_insertions_index(num_segments, 0);
+        auto find_unprocessed_segment = [&](auto& segment) -> bool {
+            for (size_t i = 0; i < segment_idx.size(); ++i) {
+                ++segment %= segment_idx.size();
+                if (segment_idx[segment] < segment_boundary[segment]) return true;
+            }
+            // All segments processed
+            return false;
+        };
 
-    // Table of elements belonging to segment
-    std::vector<ValueType> elements_table(num_segments* table_height);
-    std::vector<long> elements_table_index(num_segments, 0);
+        // This is the max number of elements that can be inserted in one table "segment"
+        int table_height = (cores - 1) * parameters::BLOCK_SIZE;
 
-    // Find first unclean segment
-    int current_segment = 0;
-    find_unprocessed_segment(current_segment);
+        // Table of indexes where is the emtpy space to insert an element
+        std::vector<long> elements_insertions(num_segments * table_height);
+        std::vector<long> elements_insertions_index(num_segments, 0);
+
+        // Table of elements belonging to segment
+        std::vector<ValueType> elements_table(num_segments * table_height);
+        std::vector<long> elements_table_index(num_segments, 0);
+
+        // Find first unclean segment
+        int current_segment = 0;
+        find_unprocessed_segment(current_segment);
 
 #pragma omp parallel shared(elements_insertions, elements_insertions_index, elements_table,    \
                             elements_table_index, segment_idx, segment_boundary, base, pivots) \
@@ -1392,19 +1396,18 @@ namespace mpqsort::impl {
 
     template <typename Cores, typename RandomIt,
               typename Compare = std::less<typename std::iterator_traits<RandomIt>::value_type>>
-    void _par_multiway_qsort(Cores cores, RandomIt first, RandomIt last,
-                             Compare comp = Compare()) {
+    void _par_multiway_qsort(Cores cores, RandomIt first, RandomIt last, Compare comp = Compare()) {
         if (last - first <= 1) return;
 
         // Set to best number of pivots, always greater than num threads but power of 2 - 1
-        long pivot_num = std::max((1 << (long)std::log2(cores)) - 1, parameters::PAR_PARTITION_NUM_PIVOTS);
+        long pivot_num
+            = std::max((1 << (long)std::log2(cores)) - 1, parameters::PAR_PARTITION_NUM_PIVOTS);
 
         // Allow MAX nested parallelism
         omp_set_max_active_levels(std::numeric_limits<int>::max());
 
         // Should not normally happen, but we set SEQ_THRESHOLD to 0 during testing
-        if (last - first
-            > std::max(parameters::SEQ_THRESHOLD, pivot_num)) {
+        if (last - first > std::max(parameters::SEQ_THRESHOLD, pivot_num)) {
             _par_multiway_qsort_inner(pivot_num, cores, first, 0, last - first - 1, comp);
         } else {
             _seq_multiway_qsort(3, first, last, comp);
@@ -1414,8 +1417,7 @@ namespace mpqsort::impl {
     // Wrapper for different arguments
     template <typename RandomIt,
               typename Compare = std::less<typename std::iterator_traits<RandomIt>::value_type>>
-    void _par_multiway_qsort(RandomIt first, RandomIt last,
-                             Compare comp = Compare()) {
+    void _par_multiway_qsort(RandomIt first, RandomIt last, Compare comp = Compare()) {
         _par_multiway_qsort(omp_get_max_threads(), first, last, comp);
     }
 
