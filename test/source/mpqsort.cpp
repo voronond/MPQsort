@@ -292,8 +292,8 @@ TEST_CASE("Test parallel partitioning") {
         test_vector = GENERATE(chunk(10000, take(10000, random(0, 1000))));
         test_vector.resize(vector_length);
     }
-
     /*
+
         SECTION("511 pivots") {
             // TODO: Very slow, 255 seems way faster
             num_pivots = 511;

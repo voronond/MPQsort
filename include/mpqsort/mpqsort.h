@@ -177,26 +177,26 @@ namespace mpqsort::parameters {
      * Threads process an array in blocks to prevent false sharing and reduce number of
      * atomic/critical sections.
      */
-    static long BLOCK_SIZE = 1 << 9;
+    static long BLOCK_SIZE = 1 << 10;
 
     /**
      * @brief Length of one cache line
      * Set to one cache line size to maximize performance (number of bytes);
      */
-    static long CACHE_LINE_SIZE = 64;
+    //static long CACHE_LINE_SIZE = 64;
 
     /**
      * @brief When to switch to sequential algorithm from parallel
      * Threshold for switching from parallel version to sequential algorithm.
      */
-    static long SEQ_THRESHOLD = 1 << 17;
+    static long SEQ_THRESHOLD = 1 << 18;
 
     /**
      * @brief Switch to non-recursive algorithm
      * Threshold for switching to non-recursive algorithm (heapsort + insertion sort).
      */
 
-    static long NO_RECURSION_THRESHOLD = 128;
+    static long NO_RECURSION_THRESHOLD = 96;
     /**
      * @brief Maximum supported number of pivots by MPQsort
      * This is the max number of pivots that can MPQsort use during computation. This can't be
@@ -205,16 +205,24 @@ namespace mpqsort::parameters {
     const static long MAX_NUMBER_OF_PIVOTS = 3;  // can't be changed during runtime
 
     /**
-     * @brief Number of elements to chose a pivot from in a first parallel multiway partitioning
-     * Determined hos many elements from an input array we want to consider to chose one pivot when we do the first parallel partitioning
+     * @brief Number of pivots used in multiway parallel partitioning
+     * Number for pivots used to divide array in PAR_PARTITION_NUM_PIVOTS + 1 segments. This is done
+     * only once and parallel multiway qsort is called afterwards on each such segment.
      */
-    static long ONE_PIVOT_PAR_MULT_PARTITIONING_SAMPLE_SIZE = 20;
+    static int PAR_PARTITION_NUM_PIVOTS = 0;
+
+    /**
+     * @brief Number of elements to chose a pivot from in a first parallel multiway partitioning
+     * Determined hos many elements from an input array we want to consider to chose one pivot when
+     * we do the first parallel partitioning
+     */
+    static long ONE_PIVOT_PAR_MULT_PARTITIONING_SAMPLE_SIZE = 25;
 
     /**
      * @brief Number of elements to chose a pivot from an array in parallel multiway qsorts
      * Array was already splitted up in num_pivots + 1 segments so parallel sorts does not need to be as precise.
      */
-    static long ONE_PIVOT_PAR_SORT_SAMPLE_SIZE = 5;
+    static long ONE_PIVOT_PAR_SORT_SAMPLE_SIZE = 2;
 }  // namespace mpqsort::parameters
 
 namespace mpqsort::helpers {
@@ -1050,89 +1058,154 @@ namespace mpqsort::impl {
         auto pivots = helpers::_get_pivots(base, lp, rp, num_pivots, comp);
 
         // Indexes in blocks
-        std::vector<long> segment_idx(num_pivots + 1, 0);
+        std::vector<long> segment_idx(num_segments);
+        std::vector<long> segment_boundary(num_segments);
 
-        // Find boundaries of segments
-        long* sums;
+        // If number of pivots is greater than cores, distribute pivots uniformly between threads
+        if (pivots.size() > (size_t)cores) {
+            // Calculate upper-bound num pivots for each thread
+            int num_pivot_for_thread = std::ceil((double)pivots.size() / cores);
+            size_t total_pivots = num_pivot_for_thread * cores;
+
+            std::vector<int> t_num_pivots(cores, num_pivot_for_thread);
+
+            // Remove extra pivots uniformly
+            for (size_t i = 0; i < t_num_pivots.size() && total_pivots > pivots.size();
+                 ++i, --total_pivots) {
+                --t_num_pivots[i];
+            }
+
+            std::vector<int> t_first_pivots(cores);
+            // Get beginning of each thread pivots
+            std::exclusive_scan(t_num_pivots.begin(), t_num_pivots.end(), t_first_pivots.begin(),
+                                0);
+
 #pragma omp parallel num_threads(cores)
-        {
-            const int nthreads = omp_get_num_threads();
-            const int ithread = omp_get_thread_num();
-            // Round segment size to cacheline size
-            const int num_segments_rounded
-                = (long)std::ceil((num_segments * sizeof(long) + parameters::CACHE_LINE_SIZE - 1)
-                                  / parameters::CACHE_LINE_SIZE)
-                  * parameters::CACHE_LINE_SIZE;
-            const int ithread_seg_start = ithread * num_segments_rounded;
+            {
+                const int tid = omp_get_thread_num();
+                const int t_num_pivot = t_num_pivots[tid];
+                const int t_first_pivot = t_first_pivots[tid];
+                std::vector<long> num_els_smaller(t_num_pivot, 0);
+
+                for (long i = lp; i <= rp; ++i) {
+                    for (int j = 0, first = t_first_pivot; j < t_num_pivot; ++j, ++first) {
+                        if (comp(base[i], pivots[first])) {
+                            for (; j < t_num_pivot; ++j) ++num_els_smaller[j];
+
+                            break;
+                        }
+                    }
+                }
+
+                for (int i = 0, first = t_first_pivot; i < t_num_pivot; ++i, ++first) {
+                    segment_boundary[first] = num_els_smaller[i];
+                }
+            }
+        } else {
+            // Find boundaries of segments
+#pragma omp parallel num_threads(cores)
+            {
+                const int tid = omp_get_thread_num();
+
+                if ((size_t)tid < pivots.size()) {
+                    long num_el_smaller = 0;
+                    for (long i = lp; i <= rp; ++i) {
+                        if (comp(base[i], pivots[tid])) ++num_el_smaller;
+                    }
+
+                    segment_boundary[tid] = num_el_smaller;
+                }
+            }
+        }
+
+    segment_boundary.back() = rp + 1;
+    segment_idx[0] = 0;
+    for (size_t i = 0; i < segment_boundary.size() - 1; ++i) {
+        segment_idx[i + 1] = segment_boundary[i];
+    }
+
+    /*
+    long* sums;
+#pragma omp parallel num_threads(cores)
+    {
+        const int nthreads = omp_get_num_threads();
+        const int ithread = omp_get_thread_num();
+        // Round segment size to cacheline size
+        const int num_segments_rounded
+            = (long)std::ceil((num_segments * sizeof(long) + parameters::CACHE_LINE_SIZE - 1)
+                              / parameters::CACHE_LINE_SIZE)
+              * parameters::CACHE_LINE_SIZE;
+        const int ithread_seg_start = ithread * num_segments_rounded;
 
 #pragma omp single
-                sums = new long[nthreads * num_segments_rounded];
+            sums = new long[nthreads * num_segments_rounded];
 
-            // Initialize private segments
-            for (int i = 0; i < num_segments; ++i) {
-                sums[ithread_seg_start + i] = 0;
-            }
-
-#pragma omp for schedule(static)
-            for (long i = lp; i <= rp; ++i) {
-                auto segment_id = helpers::_find_element_segment_id(
-                    num_element_comparisons, pivots.begin(), pivots.size(), base[i], comp);
-                ++sums[segment_id + ithread_seg_start];
-            }
-
-#pragma omp for schedule(static)
-            for (int i = 0; i < num_segments; ++i) {
-                long sum = 0;
-                for (int j = 0; j < nthreads; ++j) {
-                    sum += sums[i + j * num_segments_rounded];
-                }
-                segment_idx[i] = sum;
-            }
+        // Initialize private segments
+        for (int i = 0; i < num_segments; ++i) {
+            sums[ithread_seg_start + i] = 0;
         }
-        delete[] sums;
 
-        // Compute beginning of each segment
-        std::exclusive_scan(segment_idx.begin(), segment_idx.end(), segment_idx.begin(), 0);
+#pragma omp for schedule(static)
+        for (long i = lp; i <= rp; ++i) {
+            auto segment_id = helpers::_find_element_segment_id(
+                num_element_comparisons, pivots.begin(), pivots.size(), base[i], comp);
+            ++sums[segment_id + ithread_seg_start];
+        }
 
-        // Create boundaries for each segment
-        std::vector<long> segment_boundary(segment_idx.begin() + 1, segment_idx.end());
-        segment_boundary.emplace_back(rp + 1);
+#pragma omp for schedule(static)
+        for (int i = 0; i < num_segments; ++i) {
+            long sum = 0;
+            for (int j = 0; j < nthreads; ++j) {
+                sum += sums[i + j * num_segments_rounded];
+            }
+            segment_idx[i] = sum;
+        }
+    }
+    delete[] sums;
 
-        // If index already >= boundary => segment clean and no elements belong in it
+    // Compute beginning of each segment
+    std::exclusive_scan(segment_idx.begin(), segment_idx.end(), segment_idx.begin(), 0);
+
+    // Create boundaries for each segment
+    std::vector<long> segment_boundary(segment_idx.begin() + 1, segment_idx.end());
+    segment_boundary.emplace_back(rp + 1);
+    */
+
+    // If index already >= boundary => segment clean and no elements belong in it
+    for (size_t i = 0; i < segment_idx.size(); ++i) {
+        if (segment_idx[i] == segment_boundary[i]) --num_segments_left;
+    }
+
+    // Returns if element belongs to given segment
+    auto element_in_segment = [&](auto& el, size_t segment) {
+        // Compound logical comparison to prevent redundant branching
+        return (segment == 0 || !comp(el, pivots[segment - 1]))
+               && (segment == segment_idx.size() || comp(el, pivots[segment]));
+    };
+
+    auto find_unprocessed_segment = [&](auto& segment) -> bool {
         for (size_t i = 0; i < segment_idx.size(); ++i) {
-            if (segment_idx[i] == segment_boundary[i]) --num_segments_left;
+            ++segment %= segment_idx.size();
+            if (segment_idx[segment] < segment_boundary[segment]) return true;
         }
+        // All segments processed
+        return false;
+    };
 
-        // Returns if element belongs to given segment
-        auto element_in_segment = [&](auto& el, size_t segment) {
-            // Compound logical comparison to prevent redundant branching
-            return (segment == 0 || !comp(el, pivots[segment - 1]))
-                   && (segment == segment_idx.size() || comp(el, pivots[segment]));
-        };
+    // This is the max number of elements that can be inserted in one table "segment"
+    int table_height = (cores - 1) * parameters::BLOCK_SIZE;
 
-        auto find_unprocessed_segment = [&](auto& segment) -> bool {
-            for (size_t i = 0; i < segment_idx.size(); ++i) {
-                ++segment %= segment_idx.size();
-                if (segment_idx[segment] < segment_boundary[segment]) return true;
-            }
-            // All segments processed
-            return false;
-        };
+    // Table of indexes where is the emtpy space to insert an element
+    std::vector<long> elements_insertions(num_segments* table_height);
+    std::vector<long> elements_insertions_index(num_segments, 0);
 
-        // This is the max number of elements that can be inserted in one table "segment"
-        int table_height = (cores - 1) * parameters::BLOCK_SIZE;
+    // Table of elements belonging to segment
+    std::vector<ValueType> elements_table(num_segments* table_height);
+    std::vector<long> elements_table_index(num_segments, 0);
 
-        // Table of indexes where is the emtpy space to insert an element
-        std::vector<long> elements_insertions(num_segments * table_height);
-        std::vector<long> elements_insertions_index(num_segments, 0);
-
-        // Table of elements belonging to segment
-        std::vector<ValueType> elements_table(num_segments * table_height);
-        std::vector<long> elements_table_index(num_segments, 0);
-
-        // Find first unclean segment
-        int current_segment = 0;
-        find_unprocessed_segment(current_segment);
+    // Find first unclean segment
+    int current_segment = 0;
+    find_unprocessed_segment(current_segment);
 
 #pragma omp parallel shared(elements_insertions, elements_insertions_index, elements_table,    \
                             elements_table_index, segment_idx, segment_boundary, base, pivots) \
@@ -1324,7 +1397,7 @@ namespace mpqsort::impl {
         if (last - first <= 1) return;
 
         // Set to best number of pivots, always greater than num threads but power of 2 - 1
-        long pivot_num = (1 << (long)std::ceil(std::log2(cores))) - 1;
+        long pivot_num = std::max((1 << (long)std::log2(cores)) - 1, parameters::PAR_PARTITION_NUM_PIVOTS);
 
         // Allow MAX nested parallelism
         omp_set_max_active_levels(std::numeric_limits<int>::max());
