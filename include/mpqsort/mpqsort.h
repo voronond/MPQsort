@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
+#include <chrono>
 #include <execution>
 #include <iostream>
 #include <iterator>
@@ -1200,8 +1201,8 @@ namespace mpqsort::impl {
         int table_height = (cores - 1) * parameters::BLOCK_SIZE;
 
         // Table of indexes where is the emtpy space to insert an element
-        std::vector<long> elements_insertions(num_segments * table_height);
-        std::vector<long> elements_insertions_index(num_segments, 0);
+        std::vector<long> elements_table_insertions(num_segments * table_height);
+        std::vector<long> elements_table_insertions_index(num_segments, 0);
 
         // Table of elements belonging to segment
         std::vector<ValueType> elements_table(num_segments * table_height);
@@ -1211,8 +1212,9 @@ namespace mpqsort::impl {
         int current_segment = 0;
         find_unprocessed_segment(current_segment);
 
-#pragma omp parallel shared(elements_insertions, elements_insertions_index, elements_table,    \
-                            elements_table_index, segment_idx, segment_boundary, base, pivots) \
+#pragma omp parallel shared(elements_table_insertions, elements_table_insertions_index,          \
+                            elements_table, elements_table_index, segment_idx, segment_boundary, \
+                            base, pivots)                                                        \
     firstprivate(num_segments, num_segments_left, current_segment) num_threads(cores)
         {
             // Private start and end of block for given segment
@@ -1249,8 +1251,8 @@ namespace mpqsort::impl {
                             // Insert element index in global table so that other threads can copy
                             // element to that place
 #pragma omp atomic capture
-                            index = elements_insertions_index[tmp_el_segment]++;
-                            elements_insertions[INDEX(tmp_el_segment, index, table_height)]
+                            index = elements_table_insertions_index[tmp_el_segment]++;
+                            elements_table_insertions[INDEX(tmp_el_segment, index, table_height)]
                                 = tmp_el_index;
                             ++block_start[dept_segment];
                             dept_segment = -1;
@@ -1323,37 +1325,13 @@ namespace mpqsort::impl {
                 current_segment = helpers::_find_element_segment_id(
                     num_element_comparisons, pivots.begin(), pivots.size(), tmp_el, comp);
             }
-
-            // All segments clean from this thread perspective, but some blocks have still
-            // unprocessed elements. Insert those indexes in a global table so that other threads
-            // know where they can place their elements from a global table
-            for (size_t i = 0; i < block_start.size(); ++i) {
-                if (block_start[i] >= block_end[i]) continue;
-
-                int num_of_indexes = block_end[i] - block_start[i];
-                int start;
-
-#pragma omp atomic capture
-                {
-                    start = elements_insertions_index[i];
-                    elements_insertions_index[i] += num_of_indexes;
-                }
-
-                auto s = block_start[i], e = block_end[i];
-                while (s < e) {
-                    elements_insertions[INDEX(i, start, table_height)] = s;
-
-                    ++start;
-                    ++s;
-                }
-            }
         }
 
 // Insert elements from tables in an array
 #pragma omp parallel for num_threads(cores)
-        for (size_t i = 0; i < elements_insertions_index.size(); ++i) {
-            for (int j = 0; j < elements_insertions_index[i]; ++j) {
-                base[elements_insertions[INDEX(i, j, table_height)]]
+        for (size_t i = 0; i < elements_table_insertions_index.size(); ++i) {
+            for (int j = 0; j < elements_table_insertions_index[i]; ++j) {
+                base[elements_table_insertions[INDEX(i, j, table_height)]]
                     = elements_table[INDEX(i, j, table_height)];
             }
         }
