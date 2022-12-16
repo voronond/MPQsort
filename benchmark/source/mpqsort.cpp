@@ -1,4 +1,5 @@
 #include <../AQsort/include/aqsort.h>
+#include <../cpp11sort/include/cpp11sort.h>
 #include <benchmark/benchmark.h>
 #include <mpqsort/mpqsort.h>
 #include <mpqsort/version.h>
@@ -339,6 +340,32 @@ register_bench_default(aqsort_par_sort);
 register_bench_small_sizes(aqsort_par_sort);
 register_bench_small_values_range(aqsort_par_sort);
 
+// Run cpp11sort parallel benchmarks
+#define cpp11sort_par_sort(dataType, bench, type, size, from, to)                                \
+    BENCHMARK_TEMPLATE_DEFINE_F(dataType##VectorFixture,                                         \
+                                BM_cpp11sort_par_sort_##dataType##_##type##_##bench, type, size, \
+                                from, to)                                                        \
+    (benchmark::State & state) {                                                                 \
+        for (auto _ : state) {                                                                   \
+            state.PauseTiming();                                                                 \
+            Prepare();                                                                           \
+            state.ResumeTiming();                                                                \
+            cpp11sort::sort(vec.begin(), vec.end());                                             \
+            state.PauseTiming();                                                                 \
+            Destroy();                                                                           \
+            state.ResumeTiming();                                                                \
+        }                                                                                        \
+    }                                                                                            \
+    BENCHMARK_REGISTER_F(dataType##VectorFixture,                                                \
+                         BM_cpp11sort_par_sort_##dataType##_##type##_##bench)                    \
+        ->MeasureProcessCPUTime()                                                                \
+        ->UseRealTime()                                                                          \
+        ->Name(str(BM_cpp11sort_par_sort_##dataType##_##type##_##bench));
+
+register_bench_default(cpp11sort_par_sort);
+register_bench_small_sizes(cpp11sort_par_sort);
+register_bench_small_values_range(cpp11sort_par_sort);
+
 // Run mpqsort parallel benchmarks parameters tuning
 // Arguments passed in this order:
 // BLOCK_SIZE, SEQ_THRESHOLD, NO_RECURSION_THRESHOLD,
@@ -583,3 +610,4 @@ register_bench_small_size_threshold(mpqsort_seq_three_way_sort);
 register_bench_small_size_threshold(mpqsort_seq_four_way_sort);
 register_bench_small_size_threshold(mpqsort_par_sort);
 register_bench_small_size_threshold(aqsort_par_sort);
+register_bench_small_size_threshold(cpp11sort_par_sort);
