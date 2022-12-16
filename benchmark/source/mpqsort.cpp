@@ -608,6 +608,7 @@ register_bench_small_size_threshold(std_sort);
 register_bench_small_size_threshold(mpqsort_seq_two_way_sort);
 register_bench_small_size_threshold(mpqsort_seq_three_way_sort);
 register_bench_small_size_threshold(mpqsort_seq_four_way_sort);
+register_bench_small_size_threshold(gnu_bqs_sort);
 register_bench_small_size_threshold(mpqsort_par_sort);
 register_bench_small_size_threshold(aqsort_par_sort);
 register_bench_small_size_threshold(cpp11sort_par_sort);
