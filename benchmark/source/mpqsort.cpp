@@ -1,3 +1,4 @@
+#include <../AQsort/include/aqsort.h>
 #include <benchmark/benchmark.h>
 #include <mpqsort/mpqsort.h>
 #include <mpqsort/version.h>
@@ -309,6 +310,35 @@ register_bench_default(mpqsort_par_sort);
 register_bench_small_sizes(mpqsort_par_sort);
 register_bench_small_values_range(mpqsort_par_sort);
 
+// Run aqsort parallel benchmarks
+#define aqsort_par_sort(dataType, bench, type, size, from, to)                                \
+    BENCHMARK_TEMPLATE_DEFINE_F(dataType##VectorFixture,                                      \
+                                BM_aqsort_par_sort_##dataType##_##type##_##bench, type, size, \
+                                from, to)                                                     \
+    (benchmark::State & state) {                                                              \
+        for (auto _ : state) {                                                                \
+            state.PauseTiming();                                                              \
+            Prepare();                                                                        \
+            auto sw = [&](std::size_t i, std::size_t j) { std::swap(vec[i], vec[j]); };       \
+            auto cmp = [&](std::size_t i, std::size_t j) { return vec[i] < vec[j]; };         \
+            auto vec_size = vec.end() - vec.begin();                                          \
+            state.ResumeTiming();                                                             \
+            aqsort::sort(vec_size, &cmp, &sw);                                                \
+            state.PauseTiming();                                                              \
+            Destroy();                                                                        \
+            state.ResumeTiming();                                                             \
+        }                                                                                     \
+    }                                                                                         \
+    BENCHMARK_REGISTER_F(dataType##VectorFixture,                                             \
+                         BM_aqsort_par_sort_##dataType##_##type##_##bench)                    \
+        ->MeasureProcessCPUTime()                                                             \
+        ->UseRealTime()                                                                       \
+        ->Name(str(BM_aqsort_par_sort_##dataType##_##type##_##bench));
+
+register_bench_default(aqsort_par_sort);
+register_bench_small_sizes(aqsort_par_sort);
+register_bench_small_values_range(aqsort_par_sort);
+
 // Run mpqsort parallel benchmarks parameters tuning
 // Arguments passed in this order:
 // BLOCK_SIZE, SEQ_THRESHOLD, NO_RECURSION_THRESHOLD,
@@ -552,3 +582,4 @@ register_bench_small_size_threshold(mpqsort_seq_two_way_sort);
 register_bench_small_size_threshold(mpqsort_seq_three_way_sort);
 register_bench_small_size_threshold(mpqsort_seq_four_way_sort);
 register_bench_small_size_threshold(mpqsort_par_sort);
+register_bench_small_size_threshold(aqsort_par_sort);
