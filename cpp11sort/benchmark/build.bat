@@ -1,0 +1,1 @@
+cl /I..\include /EHsc /O2 /DWITH_MS_PSTL /std:c++latest main.cpp

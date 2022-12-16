@@ -1,0 +1,37 @@
+= CPP11Sort
+
+CPP11Sort is an *efficient version of parallel quicksort algorithm* written by using *only* the {cpp}11 features without non-standard extensions (such as OpenMP) or third party libraries (such as Intel TBB).
+
+Since CPP11sort is templated for the ability to provide generic sorting, the implementation consists of header files only. The *API* is defined in the `include/cpp11sort.h` header file. There are several `sort` functions presented in the `cpp11sort` namespace. They follow the practices from the {cpp} Standard and the {cpp} Stadnard Library for the *iterator a comparator parameters and their requirements*. The additional parameter allows users to control the *number of threads* used for parallel sorting. If not provided, the default value is set to the result of the `std::thread::hardware_concurrency()` call.
+
+The sample program that utilizes CPP11sort may look like as follows:
+
+[source,c++]]
+----
+#include <cassert>
+#include <random>
+#include <vector>
+#include <cpp11sort.h>
+
+int main()
+{
+   long n = 1'000'000'000;
+   std::vector<int> v;
+   std::mt19937 eng(std::random_device{}());
+   std::uniform_int_distribution<int> dist;
+
+   while (n--)
+      v.push_back(dist(eng));
+
+   cpp11sort::sort(v.begin(), v.end());
+
+   for (long i = 1; i < v.size(); i++)
+      assert(v[i - 1] <= v[i]);
+}
+----
+
+Additionally, in the `benchmark` folder, there is a *benchmark program* that allows to compare CPP11sort with its various competitors for different type of initial data distributions. Its usage should be fully undestandable from inspecting its source code.
+
+== Authorship
+
+The code was initiali written by Klára Schovánková as a part or her Master's thesis at the Faculty of Information Technology, Czech Technical University in Prague, Czechia. Then, it has been published by Daniel Langr in this repository in a partially rewritten form. The scientific article that describes the algorithm and the implementation in detail can be found here: https://doi.org/10.1002/cpe.6606.
