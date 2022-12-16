@@ -16,7 +16,7 @@
 // TODO: Remove when done
 //#define DEBUG
 //#define MEASURE
-//#define TIME_MEASURE
+#define TIME_MEASURE
 
 #ifdef DEBUG
 #    define PRINT_ITERS(base, lp, rp, msg) mpqsort::helpers::print(base, lp, rp, msg)
@@ -1054,6 +1054,9 @@ namespace mpqsort::impl {
         using std::swap;
         using ValueType = typename std::iterator_traits<RandomBaseIt>::value_type;
 
+        TIME_MEASURE_START(parallel_partition);
+        TIME_MEASURE_START(par_preparation);
+
         const int num_segments = num_pivots + 1;
         int num_segments_left = num_segments;
         // Precompute number of comparisons
@@ -1212,6 +1215,9 @@ namespace mpqsort::impl {
         int current_segment = 0;
         find_unprocessed_segment(current_segment);
 
+        TIME_MEASURE_END(par_preparation, par_preparation_end, "Parallel preparation");
+        TIME_MEASURE_START(par_main);
+
 #pragma omp parallel shared(elements_table_insertions, elements_table_insertions_index,          \
                             elements_table, elements_table_index, segment_idx, segment_boundary, \
                             base, pivots)                                                        \
@@ -1326,6 +1332,8 @@ namespace mpqsort::impl {
                     num_element_comparisons, pivots.begin(), pivots.size(), tmp_el, comp);
             }
         }
+        TIME_MEASURE_END(par_main, par_main_end, "Parallel main");
+        TIME_MEASURE_START(par_cleanup);
 
 // Insert elements from tables in an array
 #pragma omp parallel for num_threads(cores)
@@ -1335,6 +1343,9 @@ namespace mpqsort::impl {
                     = elements_table[INDEX(i, j, table_height)];
             }
         }
+
+        TIME_MEASURE_END(par_cleanup, par_cleanup_end, "Parallel cleanup");
+        TIME_MEASURE_END(parallel_partition, parallel_partition_end, "Parallel partitioning");
 
         return segment_boundary;
     }
