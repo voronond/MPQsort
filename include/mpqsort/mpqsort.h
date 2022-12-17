@@ -16,7 +16,7 @@
 // TODO: Remove when done
 //#define DEBUG
 //#define MEASURE
-#define TIME_MEASURE
+//#define TIME_MEASURE
 
 #ifdef DEBUG
 #    define PRINT_ITERS(base, lp, rp, msg) mpqsort::helpers::print(base, lp, rp, msg)
@@ -1540,3 +1540,4 @@ namespace mpqsort {
         impl::_call_sort(std::forward<ExecutionPolicy>(policy), cores, first, last, comp);
     }
 }  // namespace mpqsort
+
