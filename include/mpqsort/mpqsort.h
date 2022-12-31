@@ -13,7 +13,6 @@
 #include <random>
 #include <type_traits>
 
-// TODO: Remove when done
 //#define DEBUG
 //#define MEASURE
 //#define TIME_MEASURE
@@ -197,7 +196,7 @@ namespace mpqsort::parameters {
      * Threshold for switching to non-recursive algorithm (heapsort + insertion sort).
      */
 
-    static long NO_RECURSION_THRESHOLD = 96;
+    static long NO_RECURSION_THRESHOLD = 128;
     /**
      * @brief Maximum supported number of pivots by MPQsort
      * This is the max number of pivots that can MPQsort use during computation. This can't be
@@ -217,14 +216,14 @@ namespace mpqsort::parameters {
      * Determined hos many elements from an input array we want to consider to chose one pivot when
      * we do the first parallel partitioning
      */
-    static long ONE_PIVOT_PAR_MULT_PARTITIONING_SAMPLE_SIZE = 25;
+    static long ONE_PIVOT_PAR_MULT_PARTITIONING_SAMPLE_SIZE = 100;
 
     /**
      * @brief Number of elements to chose a pivot from an array in parallel multiway qsorts
      * Array was already splitted up in num_pivots + 1 segments so parallel sorts does not need to
      * be as precise.
      */
-    static long ONE_PIVOT_PAR_SORT_SAMPLE_SIZE = 2;
+    static long ONE_PIVOT_PAR_SORT_SAMPLE_SIZE = 3;
 }  // namespace mpqsort::parameters
 
 namespace mpqsort::helpers {
@@ -467,27 +466,6 @@ namespace mpqsort::helpers {
         }
 
         return std::tuple{i1, i3};
-        /*
-
-                std::pair<ValueType, long> el1, el2, el3, el4, el5, el6;
-                el1 = std::make_pair(base[lp], lp);
-                el2 = std::make_pair(base[size / 6 + lp], size/6 + lp);
-                el3 = std::make_pair(base[size / 6 * 2+ lp], size / 6 * 2 + lp);
-                el4 = std::make_pair(base[size / 6 * 3+ lp], size / 6 * 3 + lp);
-                el5 = std::make_pair(base[size / 6 * 4+ lp], size / 6 * 4 + lp);
-                el6 = std::make_pair(base[rp], rp);
-
-                auto i1 = _get_median_from_three(el1, el2, el3, comp);
-                auto i2 = _get_median_from_three(el4, el5, el6, comp);
-
-                MEASURE_COMP();
-                if (comp(base[i2], base[i1])) {
-                    MEASURE_SWAP();
-                    swap(i2, i1);
-                }
-
-                return std::tuple{i1, i2};
-                */
     }
 
     template <typename RandomBaseIt, typename Comparator>
@@ -577,38 +555,6 @@ namespace mpqsort::helpers {
         }
 
         return std::tuple{i1, i2, i3};
-        /*
-        std::pair<ValueType, long> el1, el2, el3, el4, el5, el6, el7, el8, el9;
-        el1 = std::make_pair(base[lp], lp);
-        el2 = std::make_pair(base[size / 9 + lp], size/9 + lp);
-        el3 = std::make_pair(base[size / 9 * 2+ lp], size / 9 * 2 + lp);
-        el4 = std::make_pair(base[size / 9 * 3+ lp], size / 9 * 3 + lp);
-        el5 = std::make_pair(base[size / 9 * 4+ lp], size / 9 * 4 + lp);
-        el6 = std::make_pair(base[size / 9 * 5+ lp], size / 9 * 5 + lp);
-        el7 = std::make_pair(base[size / 9 * 6+ lp], size / 9 * 6 + lp);
-        el8 = std::make_pair(base[size / 9 * 7+ lp], size / 9 * 7 + lp);
-        el9 = std::make_pair(base[rp], rp);
-
-        auto i1 = _get_median_from_three(el1, el2, el3, comp);
-        auto i2 = _get_median_from_three(el4, el5, el6, comp);
-        auto i3 = _get_median_from_three(el7, el8, el9, comp);
-
-        MEASURE_COMP_N(3);
-        if (comp(base[i2], base[i1])) {
-            MEASURE_SWAP();
-            swap(i1, i2);
-        }
-        if (comp(base[i3], base[i2])) {
-            MEASURE_SWAP();
-            swap(i2, i3);
-        }
-        if (comp(base[i3], base[i1])) {
-            MEASURE_SWAP();
-            swap(i1, i3);
-        }
-
-        return std::tuple{i1, i2, i3};
-        */
     }
 
     template <typename RandomBaseIt, typename Comparator>
@@ -1132,53 +1078,6 @@ namespace mpqsort::impl {
             segment_idx[i + 1] = segment_boundary[i];
         }
 
-        /*
-        long* sums;
-    #pragma omp parallel num_threads(cores)
-        {
-            const int nthreads = omp_get_num_threads();
-            const int ithread = omp_get_thread_num();
-            // Round segment size to cacheline size
-            const int num_segments_rounded
-                = (long)std::ceil((num_segments * sizeof(long) + parameters::CACHE_LINE_SIZE - 1)
-                                  / parameters::CACHE_LINE_SIZE)
-                  * parameters::CACHE_LINE_SIZE;
-            const int ithread_seg_start = ithread * num_segments_rounded;
-
-    #pragma omp single
-                sums = new long[nthreads * num_segments_rounded];
-
-            // Initialize private segments
-            for (int i = 0; i < num_segments; ++i) {
-                sums[ithread_seg_start + i] = 0;
-            }
-
-    #pragma omp for schedule(static)
-            for (long i = lp; i <= rp; ++i) {
-                auto segment_id = helpers::_find_element_segment_id(
-                    num_element_comparisons, pivots.begin(), pivots.size(), base[i], comp);
-                ++sums[segment_id + ithread_seg_start];
-            }
-
-    #pragma omp for schedule(static)
-            for (int i = 0; i < num_segments; ++i) {
-                long sum = 0;
-                for (int j = 0; j < nthreads; ++j) {
-                    sum += sums[i + j * num_segments_rounded];
-                }
-                segment_idx[i] = sum;
-            }
-        }
-        delete[] sums;
-
-        // Compute beginning of each segment
-        std::exclusive_scan(segment_idx.begin(), segment_idx.end(), segment_idx.begin(), 0);
-
-        // Create boundaries for each segment
-        std::vector<long> segment_boundary(segment_idx.begin() + 1, segment_idx.end());
-        segment_boundary.emplace_back(rp + 1);
-        */
-
         // If index already >= boundary => segment clean and no elements belong in it
         for (size_t i = 0; i < segment_idx.size(); ++i) {
             if (segment_idx[i] == segment_boundary[i]) --num_segments_left;
@@ -1372,7 +1271,6 @@ namespace mpqsort::impl {
         });
 
         // Parallel multiway sort of each segment
-// TODO: Decide if use 2 or 3 pivots sort
 #pragma omp parallel for schedule(dynamic) num_threads(cores)
         for (size_t i = 0; i < segment_ranges.size(); i++) {
             _par_multiway_qsort_inner_waterloo(base, segment_ranges[i].first,
@@ -1390,7 +1288,7 @@ namespace mpqsort::impl {
 
         // Set to best number of pivots, always greater than num threads but power of 2 - 1
         long pivot_num
-            = std::max((1 << (long)std::log2(cores)) - 1, parameters::PAR_PARTITION_NUM_PIVOTS);
+            = std::max(std::max((1 << (long)std::log2(cores)) - 1, parameters::PAR_PARTITION_NUM_PIVOTS), 1);
 
         // Allow MAX nested parallelism
         omp_set_max_active_levels(std::numeric_limits<int>::max());
