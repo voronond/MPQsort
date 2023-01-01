@@ -429,7 +429,6 @@ namespace mpqsort::helpers {
     inline auto _get_pivots_indexes_two_medians(RandomBaseIt base, long lp, long rp,
                                                 Comparator& comp) {
         using std::swap;
-        // using ValueType = typename std::iterator_traits<RandomBaseIt>::value_type;
         long sample_size = 3;
 
         auto size = rp - lp + 1;
@@ -511,7 +510,6 @@ namespace mpqsort::helpers {
     inline auto _get_pivot_indexes_three_medians(RandomBaseIt base, long lp, long rp,
                                                  Comparator& comp) {
         using std::swap;
-        // using ValueType = typename std::iterator_traits<RandomBaseIt>::value_type;
         long sample_size = 3;
 
         auto size = rp - lp + 1;
@@ -1287,8 +1285,8 @@ namespace mpqsort::impl {
         if (last - first <= 1) return;
 
         // Set to best number of pivots, always greater than num threads but power of 2 - 1
-        long pivot_num
-            = std::max(std::max((1 << (long)std::log2(cores)) - 1, parameters::PAR_PARTITION_NUM_PIVOTS), 1);
+        long pivot_num = std::max(
+            std::max((1 << (long)std::log2(cores)) - 1, parameters::PAR_PARTITION_NUM_PIVOTS), 1);
 
         // Allow MAX nested parallelism
         omp_set_max_active_levels(std::numeric_limits<int>::max());
@@ -1438,4 +1436,3 @@ namespace mpqsort {
         impl::_call_sort(std::forward<ExecutionPolicy>(policy), cores, first, last, comp);
     }
 }  // namespace mpqsort
-

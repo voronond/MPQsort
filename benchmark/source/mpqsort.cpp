@@ -4,8 +4,6 @@
 #include <mpqsort/mpqsort.h>
 #include <mpqsort/version.h>
 #include <omp.h>
-//#include <tbb/tbb.h>
-//#include <thrust/sort.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -14,9 +12,6 @@
 #include <random>
 #include <string>
 #include <vector>
-
-// TODO: remove when released
-#define TESTING
 
 // Possible vector types
 using VECTOR_TYPES = std::tuple<int, short, double>;
@@ -44,29 +39,7 @@ template <typename T, long Size = -1, int From = -1, int To = -1> struct VectorF
     void Destroy() { this->DeallocateVector(); }
 
     // Calculate how many elements to generate to fill half of the system memory
-    auto VectorSizeToFillHalfMemory() const {
-#ifdef TESTING
-        // return 100000000;
-        return 100000000;
-        // return 8 * 1024 * 1024 * (1024 / sizeof(double));
-#else
-        auto pages = sysconf(_SC_PHYS_PAGES);
-        auto page_size = sysconf(_SC_PAGE_SIZE);
-
-        // Memory in bytes
-        auto available_memory = pages * page_size;
-        auto allocate_memory = available_memory / 4;
-
-        // Get the largest type and compute number of elements based on that
-        // Result: occupied memory is different but number of elements the same
-        std::vector<int> sizes;
-        std::apply([&](auto&&... args) { ((sizes.emplace_back(sizeof(args))), ...); },
-                   VECTOR_TYPES());
-        auto number_of_elements = allocate_memory / *std::max_element(sizes.begin(), sizes.end());
-
-        return number_of_elements;
-#endif
-    }
+    auto VectorSizeToFillHalfMemory() const { return 1000000000; }
 
     std::vector<T> vec;
     T const from, to;
@@ -162,8 +135,6 @@ struct RotatedOrderVectorFixture : public RandomVectorFixture<T, Size, From, To>
         std::rotate(this->vec.begin(), this->vec.begin() + 1, this->vec.end());
     }
 };
-
-// TODO: Teeth like structure (for p chunks generate p sorted parts)
 
 // Stringify macro
 #define str(X) #X
@@ -553,56 +524,6 @@ register_bench_small_sizes(gnu_bqs_sort);
 
 register_bench_default(gnu_mwms_sort);
 register_bench_small_sizes(gnu_mwms_sort);
-
-/*
-// Run tbb sort benchmarks
-#define tbb_sort(dataType, bench, type, size, from, to)                                          \
-    BENCHMARK_TEMPLATE_DEFINE_F(dataType##VectorFixture,                                         \
-                                BM_tbb_sort_##dataType##_##type##_##bench, type, size, from, to) \
-    (benchmark::State & state) {                                                                 \
-        for (auto _ : state) {                                                                   \
-            state.PauseTiming();                                                                 \
-            Prepare();                                                                           \
-            state.ResumeTiming();                                                                \
-            tbb::parallel_sort(vec.begin(), vec.end());                                          \
-            state.PauseTiming();                                                                 \
-            Destroy();                                                                           \
-            state.ResumeTiming();                                                                \
-        }                                                                                        \
-    }                                                                                            \
-    BENCHMARK_REGISTER_F(dataType##VectorFixture, BM_tbb_sort_##dataType##_##type##_##bench)     \
-        ->MeasureProcessCPUTime()                                                                \
-        ->UseRealTime()                                                                          \
-        ->Name(str(BM_tbb_sort_##dataType##_##type##_##bench));
-
-register_bench_default(tbb_sort);
-register_bench_small_sizes(tbb_sort);
-
-// Run nvidia thrust sort benchmarks
-#define nvidia_thrust_sort(dataType, bench, type, size, from, to)                                \
-    BENCHMARK_TEMPLATE_DEFINE_F(dataType##VectorFixture,                                         \
-                                BM_nvidia_thrust_sort_##dataType##_##type##_##bench, type, size, \
-                                from, to)                                                        \
-    (benchmark::State & state) {                                                                 \
-        for (auto _ : state) {                                                                   \
-            state.PauseTiming();                                                                 \
-            Prepare();                                                                           \
-            state.ResumeTiming();                                                                \
-            thrust::sort(vec.begin(), vec.end());                                                \
-            state.PauseTiming();                                                                 \
-            Destroy();                                                                           \
-            state.ResumeTiming();                                                                \
-        }                                                                                        \
-    }                                                                                            \
-    BENCHMARK_REGISTER_F(dataType##VectorFixture,                                                \
-                         BM_nvidia_thrust_sort_##dataType##_##type##_##bench)                    \
-        ->MeasureProcessCPUTime()                                                                \
-        ->UseRealTime()                                                                          \
-        ->Name(str(BM_nvidia_thrust_sort_##dataType##_##type##_##bench));
-
-register_bench_default(nvidia_thrust_sort);
-register_bench_small_sizes(nvidia_thrust_sort);
-*/
 
 register_bench_small_size_threshold(std_sort);
 register_bench_small_size_threshold(mpqsort_seq_two_way_sort);

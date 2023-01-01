@@ -292,18 +292,6 @@ TEST_CASE("Test parallel partitioning") {
         test_vector = GENERATE(chunk(10000, take(10000, random(0, 1000))));
         test_vector.resize(vector_length);
     }
-    /*
-
-        SECTION("511 pivots") {
-            // TODO: Very slow, 255 seems way faster
-            num_pivots = 511;
-            // Random length from 100 to 10000
-            auto vector_length = GENERATE(take(100, random(511, 10000)));
-            // Generate vector with random numbers
-            test_vector = GENERATE(chunk(10000, take(10000, random(0, 10000))));
-            test_vector.resize(vector_length);
-        }
-        */
 
     // If sample small enough, pivots are chosen like this without sampling
     auto pivots
