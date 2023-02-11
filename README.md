@@ -6,4 +6,4 @@
 
 # Multiway parallel Quicksort algorithm
 
-Master thesis which addresses the problem of multiway parallel Quicksort algorithm. The parallelization is implemented using OpenMP library.
+Master thesis which addresses a problem of multiway parallel Quicksort algorithm. The goal was to design and implement parallel partitioning with multiple pivots, because the parallel implementations until now use only one pivot (Hoare's partitioning) to do so. The parallelization is implemented using OpenMP standard.
