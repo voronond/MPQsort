@@ -114,7 +114,7 @@ struct OrganpipeOrderVectorFixture : public RandomVectorFixture<T, Size, From, T
         this->AllocateVector();
         this->FillVectorRandom();
 
-        auto end_middle = this->vec.size() / 2 + this->vec.size() & 1;
+        auto end_middle = this->vec.size() / 2 + (this->vec.size() & 1);
 
         __gnu_parallel::sort(this->vec.begin(), this->vec.begin() + end_middle,
                              __gnu_parallel::balanced_quicksort_tag());
